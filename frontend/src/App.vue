@@ -96,7 +96,9 @@ const {
   fromYear,
   toYear,
   sliderTrackStyle,
-  yearRangeError
+  yearRangeError,
+  yearBoundsVersion,
+  activeIndicatorForYears
 } = useYearRange(selectedIndicator)
 
 const {
@@ -112,7 +114,10 @@ const { tableData, loading, dataError } = useIndicatorData(
   selectedIndicator,
   fromYear,
   toYear,
-  sortBy
+  sortBy,
+  yearBoundsVersion,
+  activeIndicatorForYears,
+  yearRangeError
 )
 
 const { mapData, valueBounds, getStyleForFeature } = useMapChloropleth(

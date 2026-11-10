@@ -40,31 +40,44 @@ export function useYearRange(selectedIndicator) {
   const fromYear = ref(2000)
   const toYear = ref(2020)
   const yearRangeError = ref(null)
+  const yearBoundsVersion = ref(0)
+  const activeIndicatorForYears = ref('')
+  let yearsAbortController = null
 
   const sliderTrackStyle = computed(() =>
     getSliderTrackStyle(fromYear.value, toYear.value, sliderMinYear.value, sliderMaxYear.value)
   )
 
   async function loadYearBounds() {
-    if (selectedIndicator.value) {
-      try {
-        yearRangeError.value = null
-        const bounds = await fetchYears(selectedIndicator.value)
-        if (bounds && bounds.length === 2) {
-          sliderMinYear.value = bounds[0]
-          sliderMaxYear.value = bounds[1]
-          fromYear.value = bounds[0]
-          toYear.value = bounds[1]
-        } else if (bounds && bounds.length > 0) {
-          sliderMinYear.value = bounds[0]
-          sliderMaxYear.value = bounds[0]
-          fromYear.value = bounds[0]
-          toYear.value = bounds[0]
-        }
-      } catch (err) {
-        console.error('Failed to load year bounds:', err)
-        yearRangeError.value = 'Could not load available years for this indicator.'
+    if (yearsAbortController) {
+      yearsAbortController.abort()
+    }
+    const indicator = selectedIndicator.value
+    if (!indicator) {
+      activeIndicatorForYears.value = ''
+      return
+    }
+    yearsAbortController = new AbortController()
+    try {
+      yearRangeError.value = null
+      const bounds = await fetchYears(indicator, { signal: yearsAbortController.signal })
+      if (bounds && bounds.length === 2) {
+        sliderMinYear.value = bounds[0]
+        sliderMaxYear.value = bounds[1]
+        fromYear.value = bounds[0]
+        toYear.value = bounds[1]
+      } else if (bounds && bounds.length > 0) {
+        sliderMinYear.value = bounds[0]
+        sliderMaxYear.value = bounds[0]
+        fromYear.value = bounds[0]
+        toYear.value = bounds[0]
       }
+      activeIndicatorForYears.value = indicator
+      yearBoundsVersion.value += 1
+    } catch (err) {
+      if (err?.name === 'AbortError') return
+      console.error('Failed to load year bounds:', err)
+      yearRangeError.value = 'Could not load available years for this indicator.'
     }
   }
 
@@ -86,42 +99,94 @@ export function useYearRange(selectedIndicator) {
     fromYear,
     toYear,
     sliderTrackStyle,
-    yearRangeError
+    yearRangeError,
+    yearBoundsVersion,
+    activeIndicatorForYears
   }
 }
 
-export function useIndicatorData(selectedIndicator, fromYear, toYear, sortBy) {
+export function useIndicatorData(
+  selectedIndicator,
+  fromYear,
+  toYear,
+  sortBy,
+  yearBoundsVersion,
+  activeIndicatorForYears,
+  yearRangeError
+) {
   const tableData = ref([])
   const loading = ref(false)
   const dataError = ref(null)
+  let dataAbortController = null
 
   async function loadData() {
     if (!selectedIndicator.value) {
       tableData.value = []
+      loading.value = false
       return
     }
+    if (dataAbortController) {
+      dataAbortController.abort()
+    }
+    const controller = new AbortController()
+    dataAbortController = controller
+
     loading.value = true
     dataError.value = null
     try {
-      tableData.value = await fetchIndicatorData(
+      const result = await fetchIndicatorData(
         selectedIndicator.value,
         fromYear.value,
         toYear.value,
-        sortBy.value
+        sortBy.value,
+        { signal: controller.signal }
       )
-    } catch {
+      tableData.value = result
+    } catch (err) {
+      if (err?.name === 'AbortError') return
       dataError.value = 'Failed to load indicator data.'
       tableData.value = []
     } finally {
-      loading.value = false
+      if (dataAbortController === controller) {
+        loading.value = false
+      }
     }
   }
 
   const debouncedLoad = debounce(loadData, 400)
-  watch(selectedIndicator, () => {
+
+  watch(selectedIndicator, (newInd) => {
+    debouncedLoad.cancel()
+    if (dataAbortController) {
+      dataAbortController.abort()
+    }
     tableData.value = []
+    dataError.value = null
+    loading.value = !!newInd
   })
-  watch([fromYear, toYear, sortBy], debouncedLoad, { immediate: true })
+
+  watch([fromYear, toYear, sortBy], () => {
+    if (!selectedIndicator.value) return
+    if (activeIndicatorForYears && activeIndicatorForYears.value !== selectedIndicator.value) {
+      return
+    }
+    debouncedLoad()
+  })
+
+  if (yearBoundsVersion) {
+    watch(yearBoundsVersion, () => {
+      debouncedLoad.cancel()
+      loadData()
+    })
+  }
+
+  if (yearRangeError) {
+    watch(yearRangeError, (err) => {
+      if (err) {
+        loading.value = false
+      }
+    })
+  }
 
   return { tableData, loading, dataError }
 }

@@ -51,7 +51,7 @@ export const getFeatureStyle = (feature, bounds) => ({
 export const bindFeatureInteractions = (feature, layer) => {
   const val = feature.properties.value
   const tooltipHtml = `<b>${feature.properties.name}</b><br>${
-    val === null ? 'No data' : parseFloat(val).toFixed(2)
+    val == null ? 'No data' : parseFloat(val).toFixed(2)
   }`
   layer.bindTooltip(tooltipHtml, { sticky: true })
   layer.on({
@@ -70,7 +70,7 @@ export function mergeGeojsonWithData(geojson, dataRows) {
   const valueMap = new Map(dataRows.map((row) => [row.iso_a3, row.value]))
   const clone = JSON.parse(JSON.stringify(geojson))
   clone.features.forEach((f) => {
-    f.properties.value = valueMap.get(f.properties.iso_a3) || null
+    f.properties.value = valueMap.get(f.properties.iso_a3) ?? null
   })
   return clone
 }
@@ -86,7 +86,7 @@ export function getSliderTrackStyle(fromYear, toYear, minYear, maxYear) {
 }
 
 export function computeValueBounds(dataRows) {
-  const validValues = dataRows.map((r) => r.value).filter((v) => v !== null)
+  const validValues = dataRows.map((r) => r.value).filter((v) => v != null)
   if (validValues.length === 0) return { min: 0, max: 1 }
   const min = Math.min(...validValues)
   const max = Math.max(...validValues)
@@ -95,10 +95,12 @@ export function computeValueBounds(dataRows) {
 
 export function debounce(fn, delay = 400) {
   let timer
-  return (...args) => {
+  const debounced = (...args) => {
     clearTimeout(timer)
     timer = setTimeout(() => fn(...args), delay)
   }
+  debounced.cancel = () => clearTimeout(timer)
+  return debounced
 }
 
 export function toggleSortOrder(currentSort, column) {
@@ -114,7 +116,7 @@ export function downloadCsv(rows, indicatorName, fromYear, toYear) {
   const headers = ['Country', 'Average Value']
   const csvRows = rows.map((r) => {
     const country = `"${r.name.replace(/"/g, '""')}"`
-    const val = r.value === null ? 'N/A' : parseFloat(r.value).toFixed(2)
+    const val = r.value == null ? 'N/A' : parseFloat(r.value).toFixed(2)
     return [country, val].join(',')
   })
   const csvContent = [headers.join(','), ...csvRows].join('\n')

@@ -3,6 +3,7 @@
     ref="map"
     :zoom="2"
     :center="[30, 10]"
+    :use-global-leaflet="false"
     :options="{ zoomControl: false, attributionControl: false }"
   >
     <l-tile-layer
@@ -21,8 +22,13 @@
 
 <script setup>
 import { ref } from 'vue'
+import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { LMap, LTileLayer, LGeoJson } from '@vue-leaflet/vue-leaflet'
+
+if (typeof window !== 'undefined') {
+  window.L = L
+}
 
 defineProps({
   geojsonData: { type: Object, required: true },
