@@ -92,13 +92,13 @@ export const bindFeatureInteractions = (feature, layer) => {
 
 export function mergeGeojsonWithData(geojson, dataRows) {
   if (!geojson) return null
+  const clone = JSON.parse(JSON.stringify(geojson))
+  clone.features = clone.features.filter((f) => f.properties?.iso_a3 !== 'ATA')
   if (!dataRows || dataRows.length === 0) {
-    const clone = JSON.parse(JSON.stringify(geojson))
     clone.features.forEach((f) => (f.properties.value = null))
     return clone
   }
   const valueMap = new Map(dataRows.map((row) => [row.iso_a3, row.value]))
-  const clone = JSON.parse(JSON.stringify(geojson))
   clone.features.forEach((f) => {
     f.properties.value = valueMap.get(f.properties.iso_a3) ?? null
   })

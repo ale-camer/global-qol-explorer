@@ -7,9 +7,11 @@
       :mapData="mapData"
       :getStyleForFeature="getStyleForFeature"
       :onEachFeature="bindFeatureInteractions"
-    />
-
-    <LanguageSwitcher />
+    >
+      <template #language-trigger>
+        <LanguageSwitcher />
+      </template>
+    </MapView>
 
     <transition v-if="showCover" name="fade">
       <AppCover v-if="showCover" @start-explore="showCover = false" />
@@ -17,8 +19,6 @@
 
     <transition v-else name="fade">
       <div class="overlay-content">
-        <AppHeader />
-
         <div class="left-dock">
           <ControlsPanel
             :indicator-groups="indicatorGroups"
@@ -71,7 +71,6 @@ import { ref, computed, watch } from 'vue'
 import MapView from './components/MapView.vue'
 import LanguageSwitcher from './components/LanguageSwitcher.vue'
 import AppCover from './components/AppCover.vue'
-import AppHeader from './components/AppHeader.vue'
 import ControlsPanel from './components/ControlsPanel.vue'
 import TablePanel from './components/TablePanel.vue'
 import StatusOverlay from './components/StatusOverlay.vue'

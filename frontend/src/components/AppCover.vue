@@ -1,9 +1,7 @@
 <template>
   <div class="cover-overlay">
     <div class="cover-content">
-      <div class="cover-icon-badge">
-        <i class="bi bi-globe-americas"></i>
-      </div>
+      <img :src="qolLogo" alt="Global Quality of Life Explorer" class="cover-app-logo" />
       <h1 class="cover-title">{{ $t('title') }}</h1>
       <p class="cover-lead">{{ $t('first_paragraph_intro') }}</p>
       <p class="cover-sub">{{ $t('second_paragraph_intro') }}</p>
@@ -16,5 +14,7 @@
 </template>
 
 <script setup>
+import qolLogo from '../assets/qol.png'
+
 const emit = defineEmits(['start-explore'])
 </script>
