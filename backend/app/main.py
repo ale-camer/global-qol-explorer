@@ -2,8 +2,7 @@
 # IMPORTS
 # =============================================================================
 # --- Standard library ---
-# import os
-# from dotenv import load_dotenv
+from contextlib import asynccontextmanager
 
 # --- Third-party ---
 from fastapi import FastAPI
@@ -11,23 +10,31 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # --- Project ---
 from app.api.v1.api import api_router
-
-# env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
-# load_dotenv(dotenv_path=env_path)
+from app.db.session import init_bq_client, close_bq_client
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    init_bq_client()
+    try:
+        yield
+    finally:
+        close_bq_client()
+
+
 app = FastAPI(
     title="Global Quality of Life API",
     description="An API to explore life quality indicators.",
     version="1.0.0",
-    redirect_slashes=False
+    redirect_slashes=False,
+    lifespan=lifespan,
 )
 origins = [
     "http://localhost:5173",
     "http://1.bp.blogspot.com",
-    "https://storage.googleapis.com", 
+    "https://storage.googleapis.com",
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -37,6 +44,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(api_router, prefix="/api/v1")
+
 
 @app.get("/")
 def read_root():

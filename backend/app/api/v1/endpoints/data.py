@@ -20,18 +20,24 @@ from app.schemas import schemas
 # =============================================================================
 router = APIRouter()
 
+
 @router.get("", response_model=list[schemas.Data], tags=["Data Queries"])
 @router.get("/", response_model=list[schemas.Data], tags=["Data Queries"], include_in_schema=False)
 def get_indicator_data(
-    indicator_name: str = Query(..., description="Indicator name"),
-    start_year: int = Query(..., description="Beginning year for range."),
-    end_year: int = Query(..., description="Ending year for range."),
+    indicator_name: str = Query(..., min_length=1, max_length=200, description="Indicator name"),
+    start_year: int = Query(..., ge=1000, le=2100, description="Beginning year for range."),
+    end_year: int = Query(..., ge=1000, le=2100, description="Ending year for range."),
     sort_by: Literal[
         "country_asc", "country_desc", "value_asc", "value_desc"
     ] = Query("country_asc", description="Sorting order"),
     client: Client = Depends(get_session)
 ):
-    
+    if start_year > end_year:
+        raise HTTPException(
+            status_code=422,
+            detail="start_year must be less than or equal to end_year.",
+        )
+
     sort_options = {
         "country_asc": "name ASC",
         "country_desc": "name DESC",
@@ -62,7 +68,7 @@ def get_indicator_data(
         GROUP BY c.code, c.country_name
         ORDER BY {order_by_clause};
     """
-    
+
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter("indicator_name", "STRING", indicator_name),
@@ -74,7 +80,7 @@ def get_indicator_data(
     try:
         query_job = client.query(query_str, job_config=job_config)
         results = [dict(row) for row in query_job]
-        print(f"\n[SUCCESS] Query executed.")
+        print("\n[SUCCESS] Query executed.")
         return results
 
     except Exception as e:
