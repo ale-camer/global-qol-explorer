@@ -48,11 +48,25 @@ export const getFeatureStyle = (feature, bounds) => ({
   fillOpacity: 0.8
 })
 
+const escapeHtml = (str) =>
+  String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+
 export const bindFeatureInteractions = (feature, layer) => {
   const val = feature.properties.value
-  const tooltipHtml = `<b>${feature.properties.name}</b><br>${
-    val == null ? 'No data' : parseFloat(val).toFixed(2)
-  }`
+  const safeName = escapeHtml(feature.properties.name)
+  const formattedVal =
+    val == null
+      ? 'No data'
+      : Number(val).toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })
+  const tooltipHtml = `<b>${safeName}</b><br>${formattedVal}`
   layer.bindTooltip(tooltipHtml, { sticky: true })
   layer.on({
     mouseover: (e) => e.target.setStyle({ weight: 3, color: '#666' }),

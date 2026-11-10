@@ -4,14 +4,14 @@
       <h5 class="m-0 text-dark fw-light">{{ $t('data_table') }}</h5>
       <div>
         <button
-          class="btn btn-sm btn-outline-light btn-success py-0 px-2 me-2"
+          class="btn btn-sm btn-success py-0 px-2 me-2"
           @click="emit('download-csv')"
           title="Download as CSV"
         >
           <i class="bi bi-download"></i>
         </button>
         <button
-          class="btn btn-sm btn-outline-dark btn-warning py-0 px-2"
+          class="btn btn-sm btn-warning py-0 px-2"
           @click="emit('update:isTableCollapsed', !isTableCollapsed)"
           title="Toggle table visibility"
         >
@@ -72,7 +72,7 @@ const emit = defineEmits(['update:isTableCollapsed', 'set-sort', 'download-csv']
 const formatValue = (val) =>
   val == null
     ? 'N/A'
-    : parseFloat(val).toLocaleString('en-EN', {
+    : parseFloat(val).toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       })

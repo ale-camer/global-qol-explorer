@@ -21,7 +21,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { locale, availableLocales } = useI18n()
@@ -86,12 +86,26 @@ const handleClickOutside = (e) => {
   }
 }
 
+watch(
+  locale,
+  (lang) => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.dir = lang === 'arabic' ? 'rtl' : 'ltr'
+    }
+  },
+  { immediate: true }
+)
+
 watch(isOpen, (val) => {
   if (val) {
     document.addEventListener('click', handleClickOutside)
   } else {
     document.removeEventListener('click', handleClickOutside)
   }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
 

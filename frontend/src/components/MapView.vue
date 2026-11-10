@@ -15,7 +15,7 @@
       :key="JSON.stringify(mapData.features.map((f) => f.properties.value))"
       :geojson="mapData"
       :options-style="getStyleForFeature"
-      :options-on-each-feature="onEachFeature"
+      :options="{ onEachFeature }"
     />
   </l-map>
 </template>
