@@ -114,14 +114,34 @@ export function useIndicatorData(
   activeIndicatorForYears,
   yearRangeError
 ) {
-  const tableData = ref([])
+  const rawData = ref([])
   const loading = ref(false)
   const dataError = ref(null)
   let dataAbortController = null
 
+  const tableData = computed(() => {
+    const rows = [...rawData.value]
+    const currentSort = sortBy?.value || 'country_asc'
+    return rows.sort((a, b) => {
+      if (currentSort === 'country_asc') {
+        return (a.name || '').localeCompare(b.name || '')
+      }
+      if (currentSort === 'country_desc') {
+        return (b.name || '').localeCompare(a.name || '')
+      }
+      if (currentSort === 'value_asc') {
+        return (a.value ?? Infinity) - (b.value ?? Infinity)
+      }
+      if (currentSort === 'value_desc') {
+        return (b.value ?? -Infinity) - (a.value ?? -Infinity)
+      }
+      return 0
+    })
+  })
+
   async function loadData() {
     if (!selectedIndicator.value) {
-      tableData.value = []
+      rawData.value = []
       loading.value = false
       return
     }
@@ -141,11 +161,11 @@ export function useIndicatorData(
         sortBy.value,
         { signal: controller.signal }
       )
-      tableData.value = result
+      rawData.value = result
     } catch (err) {
       if (err?.name === 'AbortError') return
       dataError.value = 'Failed to load indicator data.'
-      tableData.value = []
+      rawData.value = []
     } finally {
       if (dataAbortController === controller) {
         loading.value = false
@@ -160,12 +180,12 @@ export function useIndicatorData(
     if (dataAbortController) {
       dataAbortController.abort()
     }
-    tableData.value = []
+    rawData.value = []
     dataError.value = null
     loading.value = !!newInd
   })
 
-  watch([fromYear, toYear, sortBy], () => {
+  watch([fromYear, toYear], () => {
     if (!selectedIndicator.value) return
     if (activeIndicatorForYears && activeIndicatorForYears.value !== selectedIndicator.value) {
       return

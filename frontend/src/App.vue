@@ -43,10 +43,11 @@
 
         <transition name="fade">
           <StatusOverlay
-            v-if="!selectedIndicator || loading || combinedError"
+            v-if="!selectedIndicator || loading || combinedError || tableData.length === 0"
             :loading="loading"
             :error="combinedError"
             :has-selected-indicator="!!selectedIndicator"
+            :is-empty="!!selectedIndicator && !loading && !combinedError && tableData.length === 0"
           />
         </transition>
 
