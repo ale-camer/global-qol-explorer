@@ -19,15 +19,26 @@
       <div class="overlay-content">
         <AppHeader />
 
-        <ControlsPanel
-          :indicator-groups="indicatorGroups"
-          :slider-min-year="sliderMinYear"
-          :slider-max-year="sliderMaxYear"
-          :slider-track-style="sliderTrackStyle"
-          v-model:selected-indicator="selectedIndicator"
-          v-model:from-year="fromYear"
-          v-model:to-year="toYear"
-        />
+        <div class="left-dock">
+          <ControlsPanel
+            :indicator-groups="indicatorGroups"
+            :slider-min-year="sliderMinYear"
+            :slider-max-year="sliderMaxYear"
+            :slider-track-style="sliderTrackStyle"
+            v-model:selected-indicator="selectedIndicator"
+            v-model:from-year="fromYear"
+            v-model:to-year="toYear"
+          />
+
+          <transition name="fade-slide-up">
+            <MapLegend
+              v-if="selectedIndicator && !loading && !combinedError && tableData.length > 0"
+              :palette="COLOR_PALETTE"
+              :value-bounds="valueBounds"
+              :indicator-name="formatIndicatorName(selectedIndicator)"
+            />
+          </transition>
+        </div>
 
         <transition name="fade-slide-up">
           <TablePanel
@@ -48,15 +59,6 @@
             :error="combinedError"
             :has-selected-indicator="!!selectedIndicator"
             :is-empty="!!selectedIndicator && !loading && !combinedError && tableData.length === 0"
-          />
-        </transition>
-
-        <transition name="fade-slide-up">
-          <MapLegend
-            v-if="selectedIndicator && !loading && !combinedError && tableData.length > 0"
-            :palette="COLOR_PALETTE"
-            :value-bounds="valueBounds"
-            :indicator-name="formatIndicatorName(selectedIndicator)"
           />
         </transition>
       </div>

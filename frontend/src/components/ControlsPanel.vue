@@ -1,20 +1,21 @@
 <template>
   <div
     :class="[
-      'controls-panel p-4',
+      'controls-panel',
       {
         'highlight-onboarding': !selectedIndicator,
         'active-panel': selectedIndicator
       }
     ]"
   >
-    <div class="mb-3">
-      <label for="indicator-select" class="form-label text-dark">
+    <div class="control-group">
+      <label for="indicator-select" class="control-label">
+        <i class="bi bi-bar-chart-line me-1"></i>
         {{ $t('indicator') }}
       </label>
       <select
         id="indicator-select"
-        class="form-select"
+        class="form-select modern-select"
         :value="selectedIndicator"
         @change="onIndicatorChange"
       >
@@ -35,29 +36,34 @@
       </select>
     </div>
 
-    <div v-if="selectedIndicator">
-      <div class="mb-3">
-        <label class="form-label text-dark">
+    <div v-if="selectedIndicator" class="control-group mt-3 pt-3 border-top-subtle">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <label class="control-label m-0">
+          <i class="bi bi-calendar3 me-1"></i>
           {{ $t('year_range') }}
-          <strong>{{ fromYear }} - {{ toYear }}</strong>
         </label>
-        <div class="range-slider">
-          <div class="slider-track" :style="sliderTrackStyle"></div>
-          <input
-            type="range"
-            :min="sliderMinYear"
-            :max="sliderMaxYear"
-            :value="fromYear"
-            @input="onFromYearInput"
-          />
-          <input
-            type="range"
-            :min="sliderMinYear"
-            :max="sliderMaxYear"
-            :value="toYear"
-            @input="onToYearInput"
-          />
-        </div>
+        <span class="year-pill">{{ fromYear }} – {{ toYear }}</span>
+      </div>
+      <div class="range-slider">
+        <div class="slider-track" :style="sliderTrackStyle"></div>
+        <input
+          type="range"
+          :min="sliderMinYear"
+          :max="sliderMaxYear"
+          :value="fromYear"
+          @input="onFromYearInput"
+        />
+        <input
+          type="range"
+          :min="sliderMinYear"
+          :max="sliderMaxYear"
+          :value="toYear"
+          @input="onToYearInput"
+        />
+      </div>
+      <div class="d-flex justify-content-between mt-1 slider-extremes">
+        <span>{{ sliderMinYear }}</span>
+        <span>{{ sliderMaxYear }}</span>
       </div>
     </div>
   </div>
@@ -82,17 +88,3 @@ const onIndicatorChange = (e) => emit('update:selectedIndicator', e.target.value
 const onFromYearInput = (e) => emit('update:fromYear', Number(e.target.value))
 const onToYearInput = (e) => emit('update:toYear', Number(e.target.value))
 </script>
-
-<style scoped>
-@media (max-width: 430px) and (max-height: 932px) {
-  .controls-panel {
-    order: 0;
-    top: 2.5%;
-    left: 0.01%;
-  }
-  .controls-panel.active-panel {
-    top: 5%;
-    left: 10%;
-  }
-}
-</style>

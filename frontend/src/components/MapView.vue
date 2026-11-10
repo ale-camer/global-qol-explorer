@@ -2,13 +2,13 @@
   <l-map
     ref="map"
     :zoom="2"
-    :center="[30, 10]"
+    :center="[25, 10]"
     :use-global-leaflet="false"
     :options="{ zoomControl: false, attributionControl: false }"
   >
     <l-tile-layer
-      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      name="OpenStreetMap"
+      url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+      name="CartoDB Dark Matter"
     />
     <l-geo-json
       v-if="mapData"

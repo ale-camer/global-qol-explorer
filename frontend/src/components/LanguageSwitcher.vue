@@ -113,64 +113,70 @@ onBeforeUnmount(() => {
 .language-switcher {
   z-index: 11;
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: 1.25rem;
+  right: 1.5rem;
 }
 .current-language {
-  color: #fff;
+  color: #f8fafc;
   cursor: pointer;
-  backdrop-filter: blur(5px);
-  background-color: #ffffff1a;
-  border: 1px solid #fff3;
-  border-radius: 50px;
+  backdrop-filter: blur(16px);
+  background-color: rgba(15, 23, 42, 0.86);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.3rem 0.8rem;
-  font-size: 1rem;
-  transition: background-color 0.2s;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
   display: flex;
 }
 .current-language:hover {
-  background-color: #fff3;
+  border-color: rgba(56, 189, 248, 0.45);
+  background-color: rgba(30, 41, 59, 0.92);
 }
 .flag-icon {
   object-fit: cover;
   border-radius: 3px;
-  width: 25px;
-  height: 20px;
-  box-shadow: 0 1px 3px #0003;
+  width: 20px;
+  height: 15px;
+  box-shadow: 0 1px 3px #0006;
 }
 .current-language i {
-  opacity: 0.8;
-  font-size: 0.7rem;
+  opacity: 0.7;
+  font-size: 0.65rem;
 }
 .language-list {
-  backdrop-filter: blur(10px);
-  background-color: #1e1e1ecc;
-  border: 1px solid #fff3;
-  border-radius: 12px;
+  backdrop-filter: blur(16px);
+  background-color: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
   width: max-content;
-  max-height: 800px;
+  max-height: 70vh;
   margin: 0;
-  padding: 0.5rem 0;
+  padding: 0.4rem;
   list-style: none;
   position: absolute;
-  top: calc(100% + 5px);
+  top: calc(100% + 8px);
   right: 0;
   overflow-y: auto;
-  box-shadow: 0 4px 20px #0000004d;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
 }
 .language-list li {
-  color: #fff;
+  color: #e2e8f0;
   cursor: pointer;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem;
-  transition: background-color 0.2s;
+  gap: 0.65rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  transition: background-color 0.15s ease, color 0.15s ease;
   display: flex;
 }
 .language-list li:hover {
-  background-color: #ffffff1a;
+  background-color: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
 }
 .fade-slide-down-enter-active,
 .fade-slide-down-leave-active {

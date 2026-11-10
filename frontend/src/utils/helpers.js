@@ -16,37 +16,43 @@ export const formatIndicatorName = (name) => {
     .replace(/Researchers In Rd Per Million People/gi, 'Researchers In R&D Per Million People')
     .replace(/Children Per Woman Un/gi, 'Children Per Woman')
     .replace(/Pm25 Air Pollution/gi, 'PM2.5 Air Pollution (Fine Particulate Matter)')
+    .replace(/\bGdp\b/gi, 'GDP')
+    .replace(/\bHdi\b/gi, 'HDI')
+    .replace(/\bCo2\b/gi, 'CO₂')
 
   return formatted.trim()
 }
 
 export const COLOR_PALETTE = [
-  '#FFFFE5',
-  '#FFF7BC',
-  '#FEE391',
-  '#FEC44F',
-  '#FE9929',
-  '#EC7014',
-  '#CC4C02',
-  '#993404',
-  '#662506'
+  '#fef08a',
+  '#fde047',
+  '#facc15',
+  '#fbbf24',
+  '#fb923c',
+  '#f97316',
+  '#ea580c',
+  '#dc2626',
+  '#991b1b'
 ]
 
 export function getColorForValue(value, bounds) {
-  if (value == null) return '#CCCCCC'
+  if (value == null) return '#1e293b'
   const { min, max } = bounds
   const ratio = max === min ? 0.5 : (value - min) / (max - min)
   const idx = Math.min(Math.floor(ratio * COLOR_PALETTE.length), COLOR_PALETTE.length - 1)
   return COLOR_PALETTE[idx]
 }
 
-export const getFeatureStyle = (feature, bounds) => ({
-  fillColor: getColorForValue(feature.properties.value, bounds),
-  weight: 1,
-  opacity: 1,
-  color: 'white',
-  fillOpacity: 0.8
-})
+export const getFeatureStyle = (feature, bounds) => {
+  const hasValue = feature.properties.value != null
+  return {
+    fillColor: getColorForValue(feature.properties.value, bounds),
+    weight: 0.8,
+    opacity: 1,
+    color: hasValue ? '#0f172a' : '#334155',
+    fillOpacity: hasValue ? 0.82 : 0.45
+  }
+}
 
 const escapeHtml = (str) =>
   String(str ?? '')
@@ -66,11 +72,21 @@ export const bindFeatureInteractions = (feature, layer) => {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         })
-  const tooltipHtml = `<b>${safeName}</b><br>${formattedVal}`
-  layer.bindTooltip(tooltipHtml, { sticky: true })
+  const tooltipHtml = `<div class="map-tooltip-inner"><span class="map-tooltip-country">${safeName}</span><span class="map-tooltip-value">${formattedVal}</span></div>`
+  layer.bindTooltip(tooltipHtml, { sticky: true, className: 'dark-slate-tooltip' })
   layer.on({
-    mouseover: (e) => e.target.setStyle({ weight: 3, color: '#666' }),
-    mouseout: (e) => e.target.setStyle({ weight: 1, color: 'white' })
+    mouseover: (e) =>
+      e.target.setStyle({
+        weight: 2.2,
+        color: '#38bdf8',
+        fillOpacity: val == null ? 0.6 : 0.95
+      }),
+    mouseout: (e) =>
+      e.target.setStyle({
+        weight: 0.8,
+        color: val != null ? '#0f172a' : '#334155',
+        fillOpacity: val != null ? 0.82 : 0.45
+      })
   })
 }
 
@@ -90,12 +106,12 @@ export function mergeGeojsonWithData(geojson, dataRows) {
 }
 
 export function getSliderTrackStyle(fromYear, toYear, minYear, maxYear) {
-  if (!minYear || !maxYear || minYear === maxYear) return { background: '#007bff' }
+  if (!minYear || !maxYear || minYear === maxYear) return { background: '#38bdf8' }
   const startPct = ((fromYear - minYear) / (maxYear - minYear)) * 100
   const endPct = ((toYear - minYear) / (maxYear - minYear)) * 100
-  if (isNaN(startPct) || isNaN(endPct)) return { background: '#ddd' }
+  if (isNaN(startPct) || isNaN(endPct)) return { background: '#334155' }
   return {
-    background: `linear-gradient(to right, #ddd ${startPct}%, #007bff ${startPct}%, #007bff ${endPct}%, #ddd ${endPct}%)`
+    background: `linear-gradient(to right, #334155 ${startPct}%, #38bdf8 ${startPct}%, #3b82f6 ${endPct}%, #334155 ${endPct}%)`
   }
 }
 

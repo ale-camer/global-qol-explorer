@@ -1,38 +1,41 @@
 <template>
-  <div class="table-panel d-flex flex-column p-0">
-    <div class="panel-header d-flex justify-content-between align-items-center p-3">
-      <h5 class="m-0 text-dark fw-light">{{ $t('data_table') }}</h5>
-      <div>
+  <div class="table-panel">
+    <div class="panel-header">
+      <div class="d-flex align-items-center gap-2">
+        <h5 class="panel-title m-0">{{ $t('data_table') }}</h5>
+        <span class="count-badge">{{ tableData.length }}</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
         <button
-          class="btn btn-sm btn-success py-0 px-2 me-2"
+          class="icon-action-btn"
           @click="emit('download-csv')"
           title="Download as CSV"
         >
           <i class="bi bi-download"></i>
         </button>
         <button
-          class="btn btn-sm btn-warning py-0 px-2"
+          class="icon-action-btn"
           @click="emit('update:isTableCollapsed', !isTableCollapsed)"
           title="Toggle table visibility"
         >
-          <i :class="isTableCollapsed ? 'bi bi-arrows-expand' : 'bi bi-arrows-collapse'"></i>
+          <i :class="isTableCollapsed ? 'bi bi-chevron-down' : 'bi bi-chevron-up'"></i>
         </button>
       </div>
     </div>
 
-    <div v-if="!isTableCollapsed" class="table-container w-100 overflow-y-auto px-3 pb-3">
-      <table class="table table-borderless">
-        <thead class="text-white">
+    <div v-if="!isTableCollapsed" class="table-container">
+      <table class="modern-table">
+        <thead>
           <tr>
             <th
               class="text-start sortable"
               @click="emit('set-sort', 'country')"
               title="Sort by Country"
             >
-              {{ $t('country_header') }}
+              <span>{{ $t('country_header') }}</span>
               <i
                 v-if="sortColumn === 'country'"
-                :class="['bi', sortDirection === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down']"
+                :class="['bi', sortDirection === 'asc' ? 'bi-arrow-up-short' : 'bi-arrow-down-short']"
               ></i>
             </th>
             <th
@@ -40,18 +43,18 @@
               @click="emit('set-sort', 'value')"
               title="Sort by Value"
             >
-              {{ $t('data_header') }}
+              <span>{{ $t('data_header') }}</span>
               <i
                 v-if="sortColumn === 'value'"
-                :class="['bi', sortDirection === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down']"
+                :class="['bi', sortDirection === 'asc' ? 'bi-arrow-up-short' : 'bi-arrow-down-short']"
               ></i>
             </th>
           </tr>
         </thead>
-        <tbody class="text-dark bg-white">
+        <tbody>
           <tr v-for="row in tableData" :key="row.iso_a3">
-            <td>{{ row.name }}</td>
-            <td class="text-end">{{ formatValue(row.value) }}</td>
+            <td class="country-cell">{{ row.name }}</td>
+            <td class="value-cell text-end">{{ formatValue(row.value) }}</td>
           </tr>
         </tbody>
       </table>
@@ -77,13 +80,3 @@ const formatValue = (val) =>
         maximumFractionDigits: 2
       })
 </script>
-
-<style scoped>
-@media (max-width: 430px) and (max-height: 932px) {
-  .table-panel {
-    order: 1;
-    top: 30%;
-    left: 10%;
-  }
-}
-</style>

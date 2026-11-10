@@ -1,10 +1,12 @@
 <template>
-  <div class="legend-panel p-3">
-    <h6 class="legend-title mb-2 text-dark">{{ indicatorName }}</h6>
+  <div class="legend-panel">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="legend-title">{{ indicatorName }}</h6>
+    </div>
     <div class="legend-gradient" :style="gradientStyle"></div>
-    <div class="legend-labels d-flex justify-content-between mt-1">
-      <span class="text-dark fw-light">{{ minFormatted }}</span>
-      <span class="text-dark fw-light">{{ maxFormatted }}</span>
+    <div class="legend-labels d-flex justify-content-between mt-2">
+      <span>{{ minFormatted }}</span>
+      <span>{{ maxFormatted }}</span>
     </div>
   </div>
 </template>
@@ -26,6 +28,16 @@ const gradientStyle = computed(() => ({
   background: `linear-gradient(to right, ${props.palette.join(', ')})`
 }))
 
-const minFormatted = computed(() => props.valueBounds.min.toFixed(2))
-const maxFormatted = computed(() => props.valueBounds.max.toFixed(2))
+const minFormatted = computed(() =>
+  props.valueBounds.min.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })
+)
+const maxFormatted = computed(() =>
+  props.valueBounds.max.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })
+)
 </script>
