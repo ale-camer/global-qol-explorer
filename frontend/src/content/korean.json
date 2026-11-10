@@ -1,0 +1,15 @@
+{
+  "data_table": "국가 데이터",
+  "country_header": "국가",
+  "data_header": "평균값",
+  "initial_indication": "시작하려면 지표를 선택하세요!",
+  "loading_indication": "데이터 로드 중...",
+  "indicator": "표시기:",
+  "indicator_example": "예: 인간 개발",
+  "year_range": "연도 범위:",
+  "header": "글로벌 삶의 질 탐색기",
+  "title": "글로벌 삶의 질 탐색기",
+  "first_paragraph_intro": "전 세계의 개발 및 웰빙 지표를 시각화하고 비교할 수 있는 대화형 도구입니다.",
+  "second_paragraph_intro": "지표를 선택하고, 연도 범위를 조정하고, 글로벌 패턴을 찾아보세요.",
+  "intro_button": "탐색 시작"
+}

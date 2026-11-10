@@ -1,0 +1,18 @@
+# Python / Backend
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.env
+gcp-credentials.json
+
+# Node / Frontend
+node_modules/
+dist/
+_gcs_frontend_dist/
+
+# IDEs & OS
+.vscode/
+.idea/
+.DS_Store

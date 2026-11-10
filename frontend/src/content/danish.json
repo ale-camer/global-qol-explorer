@@ -1,0 +1,15 @@
+{
+  "data_table": "Landedata",
+  "country_header": "Land",
+  "data_header": "Gennemsnitlig værdi",
+  "initial_indication": "Vælg en indikator for at begynde!",
+  "loading_indication": "Indlæser data...",
+  "indicator": "Indikator:",
+  "indicator_example": "f.eks. menneskelig udvikling",
+  "year_range": "Årstal:",
+  "header": "Udforsker af global livskvalitet",
+  "title": "Udforsker af global livskvalitet",
+  "first_paragraph_intro": "Interaktivt værktøj til at visualisere og sammenligne udviklings- og trivselsindikatorer over hele verden.",
+  "second_paragraph_intro": "Vælg en indikator, juster årsintervallet, og afdæk globale mønstre.",
+  "intro_button": "Begynd at udforske"
+}

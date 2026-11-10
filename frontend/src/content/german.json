@@ -1,0 +1,15 @@
+{
+  "data_table": "Länderdaten",
+  "country_header": "Land",
+  "data_header": "Durchschnittlicher Wert",
+  "initial_indication": "Wählen Sie einen Indikator, um zu beginnen!",
+  "loading_indication": "Daten laden...",
+  "indicator": "Indikator:",
+  "indicator_example": "z.B. Menschliche Entwicklung",
+  "year_range": "Jahresbereich:",
+  "header": "Global Quality of Life Explorer",
+  "title": "Global Quality of Life Explorer",
+  "first_paragraph_intro": "Interaktives Tool zur Visualisierung und zum Vergleich von Entwicklungs- und Wohlstandsindikatoren weltweit.",
+  "second_paragraph_intro": "Wählen Sie einen Indikator aus, passen Sie den Jahresbereich an, und entdecken Sie globale Muster.",
+  "intro_button": "Start zur Erkundung"
+}

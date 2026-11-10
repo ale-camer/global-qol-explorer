@@ -1,0 +1,24 @@
+# Ignorar la carpeta del entorno virtual
+
+venv/
+.venv/
+.env
+
+# Ignorar la caché de Python
+
+**pycache**/
+\*.pyc
+
+# Ignorar archivos de configuración de IDEs
+
+.vscode/
+.idea/
+
+# Ignorar el repositorio de Git
+
+.git
+.gitignore
+
+# Ignorar otros archivos de configuración de despliegue si no los usas en Docker
+
+fly.toml

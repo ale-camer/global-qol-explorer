@@ -1,0 +1,15 @@
+{
+  "data_table": "Landgegevens",
+  "country_header": "Land",
+  "data_header": "Gemiddelde waarde",
+  "initial_indication": "Selecteer een indicator om te beginnen!",
+  "loading_indication": "Gegevens laden...",
+  "indicator": "Indicator:",
+  "indicator_example": "bijv. Menselijke ontwikkeling",
+  "year_range": "Jaarbereik:",
+  "header": "Wereldwijde levenskwaliteitverkenner",
+  "title": "Wereldwijde levenskwaliteitverkenner",
+  "first_paragraph_intro": "Interactieve tool voor het visualiseren en vergelijken van indicatoren voor ontwikkeling en welzijn wereldwijd.",
+  "second_paragraph_intro": "Selecteer een indicator, pas het jaarbereik aan en ontdek globale patronen.",
+  "intro_button": "Begin met verkennen"
+}

@@ -1,0 +1,15 @@
+{
+  "data_table": "Uppgifter om land",
+  "country_header": "Land",
+  "data_header": "Genomsnittligt värde",
+  "initial_indication": "Välj en indikator för att börja!",
+  "loading_indication": "Laddar data...",
+  "indicator": "Indikator:",
+  "indicator_example": "t.ex. mänsklig utveckling",
+  "year_range": "Årsintervall:",
+  "header": "Global Quality of Life Explorer",
+  "title": "Global Quality of Life Explorer",
+  "first_paragraph_intro": "Interaktivt verktyg för att visualisera och jämföra utvecklings- och välfärdsindikatorer över hela världen.",
+  "second_paragraph_intro": "Välj en indikator, justera årsintervallet och avslöja globala mönster.",
+  "intro_button": "Börja utforska"
+}

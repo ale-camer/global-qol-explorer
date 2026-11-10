@@ -1,0 +1,13 @@
+# Ignorar el entorno virtual
+venv/
+
+# Ignorar los archivos de caché de Python
+__pycache__/
+*.py[cod]
+
+# Ignorar archivos de configuración local y credenciales
+.env
+gcp-credentials.json
+
+# Ignorar archivos de configuración de VSCode
+.vscode/

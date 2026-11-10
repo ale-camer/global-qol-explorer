@@ -1,0 +1,15 @@
+{
+  "data_table": "Datos nacionales",
+  "country_header": "País",
+  "data_header": "Valor medio",
+  "initial_indication": "Seleccione un indicador para empezar",
+  "loading_indication": "Cargando datos...",
+  "indicator": "Indicador:",
+  "indicator_example": "por ejemplo, Desarrollo Humano",
+  "year_range": "Rango de años:",
+  "header": "Explorador Mundial de la Calidad de Vida",
+  "title": "Explorador Mundial de la Calidad de Vida",
+  "first_paragraph_intro": "Herramienta interactiva para visualizar y comparar indicadores de desarrollo y bienestar en todo el mundo.",
+  "second_paragraph_intro": "Seleccione un indicador, ajuste el intervalo de años y descubra patrones globales.",
+  "intro_button": "Empieza a explorar"
+}

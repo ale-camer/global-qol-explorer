@@ -1,0 +1,15 @@
+{
+  "data_table": "Country Data",
+  "country_header": "Country",
+  "data_header": "Average Value",
+  "initial_indication": "Select an indicator to begin!",
+  "loading_indication": "Loading data...",
+  "indicator": "Indicator:",
+  "indicator_example": "e.g. Human Development",
+  "year_range": "Year Range:",
+  "header": "Global Quality of Life Explorer",
+  "title": "Global Quality of Life Explorer",
+  "first_paragraph_intro": "Interactive tool to visualize and compare development and well-being indicators worldwide.",
+  "second_paragraph_intro": "Select an indicator, adjust the year range, and uncover global patterns.",
+  "intro_button": "Start to Explore"
+}

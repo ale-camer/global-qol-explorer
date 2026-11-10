@@ -1,0 +1,15 @@
+{
+  "data_table": "Ülke Verileri",
+  "country_header": "Ülke",
+  "data_header": "Ortalama Değer",
+  "initial_indication": "Başlamak için bir gösterge seçin!",
+  "loading_indication": "Veri yükleniyor...",
+  "indicator": "Gösterge:",
+  "indicator_example": "örneğin İnsani Gelişim",
+  "year_range": "Yıl aralığı:",
+  "header": "Küresel Yaşam Kalitesi Kaşifi",
+  "title": "Küresel Yaşam Kalitesi Kaşifi",
+  "first_paragraph_intro": "Dünya çapında kalkınma ve refah göstergelerini görselleştirmek ve karşılaştırmak için interaktif araç.",
+  "second_paragraph_intro": "Bir gösterge seçin, yıl aralığını ayarlayın ve küresel modelleri ortaya çıkarın.",
+  "intro_button": "Keşfetmeye Başlayın"
+}

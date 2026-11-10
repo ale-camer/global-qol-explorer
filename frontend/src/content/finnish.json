@@ -1,0 +1,15 @@
+{
+  "data_table": "Maatiedot",
+  "country_header": "Maa",
+  "data_header": "Keskimääräinen arvo",
+  "initial_indication": "Valitse indikaattori aloittaaksesi!",
+  "loading_indication": "Tietojen lataaminen...",
+  "indicator": "Indikaattori:",
+  "indicator_example": "esim. inhimillinen kehitys",
+  "year_range": "Vuodet:",
+  "header": "Global Quality of Life Explorer",
+  "title": "Global Quality of Life Explorer",
+  "first_paragraph_intro": "Vuorovaikutteinen työkalu, jolla voidaan visualisoida ja vertailla kehitys- ja hyvinvointi-indikaattoreita maailmanlaajuisesti.",
+  "second_paragraph_intro": "Valitse indikaattori, säädä vuosiväliä ja paljasta maailmanlaajuisia malleja.",
+  "intro_button": "Aloita tutkiminen"
+}

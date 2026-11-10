@@ -1,0 +1,15 @@
+{
+  "data_table": "国別データ",
+  "country_header": "国名",
+  "data_header": "平均値",
+  "initial_indication": "インジケータを選択して開始する！",
+  "loading_indication": "データをロード中...",
+  "indicator": "指標：",
+  "indicator_example": "例：人間開発",
+  "year_range": "年レンジ：",
+  "header": "グローバル・クオリティ・オブ・ライフ・エクスプローラー",
+  "title": "グローバル・クオリティ・オブ・ライフ・エクスプローラー",
+  "first_paragraph_intro": "世界中の開発指標と幸福指標を視覚化し、比較するためのインタラクティブなツール。",
+  "second_paragraph_intro": "指標を選択し、年の範囲を調整し、世界的なパターンを明らかにする。",
+  "intro_button": "探索開始"
+}

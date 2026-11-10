@@ -1,0 +1,15 @@
+{
+  "data_table": "国家数据",
+  "country_header": "国家",
+  "data_header": "平均值",
+  "initial_indication": "选择一个指标开始！",
+  "loading_indication": "加载数据...",
+  "indicator": "指标：",
+  "indicator_example": "例如：人类发展",
+  "year_range": "年份范围：",
+  "header": "全球生活质量探索者",
+  "title": "全球生活质量探索者",
+  "first_paragraph_intro": "可视化和比较全球发展与福祉指标的互动工具。",
+  "second_paragraph_intro": "选择一个指标，调整年份范围，揭示全球模式。",
+  "intro_button": "开始探索"
+}
