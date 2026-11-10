@@ -3,12 +3,13 @@
 # =============================================================================
 # --- Standard library ---
 import os
-import json
+import time
 from itertools import groupby
 from operator import itemgetter
+from typing import Any
 
 # --- Third-party ---
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from google.cloud import bigquery
 from google.cloud.bigquery.client import Client
 
@@ -22,19 +23,50 @@ from app.schemas import schemas
 # =============================================================================
 router = APIRouter()
 
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+_GEOMETRY_PATH = os.path.normpath(
+    os.path.join(_CURRENT_DIR, "..", "..", "..", "api", "static", "world-geometry.json")
+)
+_WORLD_GEOMETRY_BYTES: bytes | None = None
+_METADATA_CACHE: dict[str, tuple[float, Any]] = {}
+
+
+def _get_cached(key: str) -> Any | None:
+    entry = _METADATA_CACHE.get(key)
+    if entry is None:
+        return None
+    expires_at, value = entry
+    if time.monotonic() >= expires_at:
+        _METADATA_CACHE.pop(key, None)
+        return None
+    return value
+
+
+def _set_cached(key: str, value: Any) -> Any:
+    ttl = max(0, settings.metadata_cache_ttl_seconds)
+    if ttl > 0:
+        _METADATA_CACHE[key] = (time.monotonic() + ttl, value)
+    return value
+
 
 @router.get("/world-geometry", tags=["Metadata"])
 def get_world_geometry():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    app_root_dir = os.path.join(current_dir, "..", "..", "..")
-    file_path = os.path.join(app_root_dir, "api", "static", "world-geometry.json")
-    normalized_path = os.path.normpath(file_path)
-    with open(normalized_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    global _WORLD_GEOMETRY_BYTES
+    if _WORLD_GEOMETRY_BYTES is None:
+        with open(_GEOMETRY_PATH, "rb") as f:
+            _WORLD_GEOMETRY_BYTES = f.read()
+    return Response(
+        content=_WORLD_GEOMETRY_BYTES,
+        media_type="application/json",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 @router.get("/countries", response_model=list[schemas.Country], tags=["Metadata"])
 def get_countries(client: Client = Depends(get_session)):
+    cached = _get_cached("countries")
+    if cached is not None:
+        return cached
     try:
         table_id = f"{settings.gcp_project_id}.{settings.bq_dataset}.dim_countries"
         query = f"""
@@ -48,13 +80,16 @@ def get_countries(client: Client = Depends(get_session)):
         """
         query_job = client.query(query)
         results = [dict(row) for row in query_job]
-        return results
+        return _set_cached("countries", results)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/indicators", response_model=list[schemas.IndicatorGroup], tags=["Metadata"])
 def get_available_indicators(client: Client = Depends(get_session)):
+    cached = _get_cached("indicators")
+    if cached is not None:
+        return cached
     try:
         table_id = f"{settings.gcp_project_id}.{settings.bq_dataset}.dim_indicators"
         query = f"""
@@ -65,13 +100,14 @@ def get_available_indicators(client: Client = Depends(get_session)):
             ORDER BY category, indicator_name
         """
         results = [dict(row) for row in client.query(query)]
-        return [
+        grouped = [
             {
                 "category": key,
                 "indicators": [{"indicator_name": item["indicator_name"]} for item in group],
             }
             for key, group in groupby(results, key=itemgetter("category"))
         ]
+        return _set_cached("indicators", grouped)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -80,6 +116,10 @@ def get_available_indicators(client: Client = Depends(get_session)):
 def get_available_years(client: Client = Depends(get_session), indicator: str = ""):
     if not indicator:
         raise HTTPException(status_code=400, detail="Indicator is required")
+    cache_key = f"years:{indicator}"
+    cached = _get_cached(cache_key)
+    if cached is not None:
+        return cached
     try:
         table_id = f"{settings.gcp_project_id}.{settings.bq_dataset}.fact_indicators"
 
@@ -99,8 +139,9 @@ def get_available_years(client: Client = Depends(get_session), indicator: str = 
         )
         rows = list(client.query(query, job_config=job_config).result())
         if not rows or rows[0].min_year is None or rows[0].max_year is None:
-            return []
+            return _set_cached(cache_key, [])
 
-        return [int(rows[0].min_year), int(rows[0].max_year)]
+        bounds = [int(rows[0].min_year), int(rows[0].max_year)]
+        return _set_cached(cache_key, bounds)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

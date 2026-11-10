@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 # --- Third-party ---
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 # --- Project ---
 from app.api.v1.api import api_router
@@ -43,6 +44,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.include_router(api_router, prefix="/api/v1")
 
 
