@@ -4,7 +4,7 @@
 # --- Standard library ---
 
 # --- Third-party ---
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 # --- Project ---
 
@@ -17,14 +17,14 @@ class Country(BaseModel):
     code: str
     continent: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class Indicator(BaseModel):
     indicator_name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class UnifiedData(BaseModel):
     country_name: str | None = None
@@ -32,20 +32,19 @@ class UnifiedData(BaseModel):
     value: float | None = None
     code: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class Data(BaseModel):
     iso_a3: str
     name: str
     value: float | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class IndicatorGroup(BaseModel):
     category: str
     indicators: list[Indicator]
 
-    class Config:
-        from_attributes = True        
+    model_config = ConfigDict(from_attributes=True)

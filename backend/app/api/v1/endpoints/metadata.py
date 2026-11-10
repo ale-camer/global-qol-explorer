@@ -2,6 +2,7 @@
 # IMPORTS
 # =============================================================================
 # --- Standard library ---
+import logging
 import os
 import time
 from itertools import groupby
@@ -21,6 +22,7 @@ from app.schemas import schemas
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -52,14 +54,18 @@ def _set_cached(key: str, value: Any) -> Any:
 @router.get("/world-geometry", tags=["Metadata"])
 def get_world_geometry():
     global _WORLD_GEOMETRY_BYTES
-    if _WORLD_GEOMETRY_BYTES is None:
-        with open(_GEOMETRY_PATH, "rb") as f:
-            _WORLD_GEOMETRY_BYTES = f.read()
-    return Response(
-        content=_WORLD_GEOMETRY_BYTES,
-        media_type="application/json",
-        headers={"Cache-Control": "public, max-age=86400"},
-    )
+    try:
+        if _WORLD_GEOMETRY_BYTES is None:
+            with open(_GEOMETRY_PATH, "rb") as f:
+                _WORLD_GEOMETRY_BYTES = f.read()
+        return Response(
+            content=_WORLD_GEOMETRY_BYTES,
+            media_type="application/json",
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+    except Exception:
+        logger.exception("Failed to read world-geometry.json")
+        raise HTTPException(status_code=500, detail="Internal error loading world geometry.")
 
 
 @router.get("/countries", response_model=list[schemas.Country], tags=["Metadata"])
@@ -81,8 +87,9 @@ def get_countries(client: Client = Depends(get_session)):
         query_job = client.query(query)
         results = [dict(row) for row in query_job]
         return _set_cached("countries", results)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Failed to query countries metadata")
+        raise HTTPException(status_code=500, detail="Internal error retrieving countries.")
 
 
 @router.get("/indicators", response_model=list[schemas.IndicatorGroup], tags=["Metadata"])
@@ -108,8 +115,9 @@ def get_available_indicators(client: Client = Depends(get_session)):
             for key, group in groupby(results, key=itemgetter("category"))
         ]
         return _set_cached("indicators", grouped)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Failed to query indicators metadata")
+        raise HTTPException(status_code=500, detail="Internal error retrieving indicators.")
 
 
 @router.get("/years", response_model=list[int], tags=["Metadata"])
@@ -143,5 +151,6 @@ def get_available_years(client: Client = Depends(get_session), indicator: str = 
 
         bounds = [int(rows[0].min_year), int(rows[0].max_year)]
         return _set_cached(cache_key, bounds)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Failed to query available years for indicator=%s", indicator)
+        raise HTTPException(status_code=500, detail="Internal error retrieving available years.")
