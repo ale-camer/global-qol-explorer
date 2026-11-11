@@ -80,4 +80,4 @@ PYTHONPATH=. python -m backend.ingestion.compare_baseline
 ```
 To enable automated WhatsApp notifications in GitHub Actions (`Settings -> Secrets and variables -> Actions`), add:
 - `WHATSAPP_PHONE`: Your phone number with country code (e.g., `+54911...`)
-- `WHATSAPP_CALLMEBOT_APIKEY`: Your CallMeBot API key
+- `WHATSAPP_APIKEY`: Your CallMeBot API key

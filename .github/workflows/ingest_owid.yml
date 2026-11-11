@@ -27,7 +27,7 @@ jobs:
         env:
           PYTHONPATH: .
           WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
-          WHATSAPP_CALLMEBOT_APIKEY: ${{ secrets.WHATSAPP_CALLMEBOT_APIKEY }}
+          WHATSAPP_APIKEY: ${{ secrets.WHATSAPP_APIKEY }}
         run: |
           python -m backend.ingestion.ingest_owid
 
@@ -48,7 +48,7 @@ jobs:
         env:
           PYTHONPATH: .
           WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
-          WHATSAPP_CALLMEBOT_APIKEY: ${{ secrets.WHATSAPP_CALLMEBOT_APIKEY }}
+          WHATSAPP_APIKEY: ${{ secrets.WHATSAPP_APIKEY }}
         run: |
           python -c "
           from backend.ingestion.notify_whatsapp import build_whatsapp_message, send_whatsapp_notification
