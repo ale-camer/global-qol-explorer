@@ -1,0 +1,30 @@
+{
+  "dim_countries": {
+    "rows": 240,
+    "columns": [
+      "country_id",
+      "country_name",
+      "code",
+      "continent"
+    ],
+    "sha256": "cfca8f20a09d577f852e0e57b45ea177ef1dcc57a5b210c5b1b7dc104ceb1b1c"
+  },
+  "dim_indicators": {
+    "rows": 44,
+    "columns": [
+      "category",
+      "indicator"
+    ],
+    "sha256": "dfee37cc47481a9bc13eded28c55b6e0c7d1e790a7398dd32a0efa70e28345fb"
+  },
+  "fact_indicators": {
+    "rows": 316500,
+    "columns": [
+      "country_id",
+      "year",
+      "indicator_name",
+      "value"
+    ],
+    "sha256": "1323516c07f5fa6458da0163f6bad00e6fe3ac39e0542b4ff76458c469a1a0fe"
+  }
+}

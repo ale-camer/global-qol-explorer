@@ -10,8 +10,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Offline geometry builder assets (not needed at API runtime; world-geometry.json is already in app/api/static/)
+# Offline geometry builder & baseline CSV backup (qol.sqlite is kept for fast runtime queries)
 geometries/
+data/baseline_backup/
+data/*.tmp
 
 # Git & IDE metadata
 .git

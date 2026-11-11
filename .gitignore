@@ -9,6 +9,10 @@ venv/
 !.env.example
 gcp-credentials.json
 
+# Raw baseline CSV backup (preserved locally; manifest.json and qol.sqlite are tracked)
+backend/data/baseline_backup/*.csv
+backend/data/*.tmp
+
 # Node / Frontend
 node_modules/
 dist/

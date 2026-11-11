@@ -13,7 +13,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 # --- Project ---
 from app.api.v1.api import api_router
 from app.core.config import settings
-from app.db.session import init_bq_client, close_bq_client
+from app.db.session import init_bq_client, close_bq_client, has_sqlite_snapshot
 
 # =============================================================================
 # CONFIGURATION
@@ -58,4 +58,7 @@ def read_root():
 
 @app.get("/health", tags=["Health"])
 def health_check():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "engine": "sqlite" if has_sqlite_snapshot() else "bigquery",
+    }
