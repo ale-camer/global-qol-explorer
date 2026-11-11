@@ -1,38 +1,70 @@
 <template>
-  <div class="table-panel d-flex flex-column p-0">
-    <div class="panel-header d-flex justify-content-between align-items-center p-3">
-      <h5 class="m-0 text-dark fw-light">{{ $t('data_table') }}</h5>
-      <div>
+  <div class="table-panel">
+    <div class="panel-header">
+      <div class="d-flex align-items-center gap-2">
+        <h5 class="panel-title m-0">{{ $t('data_table') }}</h5>
+        <span class="count-badge">{{ filteredData.length }}</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
         <button
-          class="btn btn-sm btn-outline-light btn-success py-0 px-2 me-2"
+          type="button"
+          class="icon-action-btn"
           @click="emit('download-csv')"
           title="Download as CSV"
         >
           <i class="bi bi-download"></i>
         </button>
         <button
-          class="btn btn-sm btn-outline-dark btn-warning py-0 px-2"
+          type="button"
+          class="icon-action-btn"
           @click="emit('update:isTableCollapsed', !isTableCollapsed)"
           title="Toggle table visibility"
         >
-          <i :class="isTableCollapsed ? 'bi bi-arrows-expand' : 'bi bi-arrows-collapse'"></i>
+          <i :class="isTableCollapsed ? 'bi bi-chevron-down' : 'bi bi-chevron-up'"></i>
         </button>
       </div>
     </div>
 
-    <div v-if="!isTableCollapsed" class="table-container w-100 overflow-y-auto px-3 pb-3">
-      <table class="table table-borderless">
-        <thead class="text-white">
+    <div v-if="!isTableCollapsed" class="table-search-bar">
+      <i class="bi bi-search search-icon"></i>
+      <input
+        v-model="searchQuery"
+        type="text"
+        class="table-search-input"
+        :placeholder="`${$t('country_header')}...`"
+        aria-label="Filter countries"
+      />
+      <button
+        v-if="searchQuery"
+        type="button"
+        class="clear-search-btn"
+        aria-label="Clear search"
+        @click="searchQuery = ''"
+      >
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <div v-if="!isTableCollapsed" ref="tableContainerRef" class="table-container">
+      <table class="modern-table">
+        <thead>
           <tr>
+            <th
+              class="text-start rank-col sortable"
+              @click="emit('set-sort', 'value')"
+              title="Sort by Rank / Value"
+            >
+              #
+            </th>
             <th
               class="text-start sortable"
               @click="emit('set-sort', 'country')"
               title="Sort by Country"
             >
-              {{ $t('country_header') }}
+              <span>{{ $t('country_header') }}</span>
               <i
                 v-if="sortColumn === 'country'"
-                :class="['bi', sortDirection === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down']"
+                :class="['bi', sortDirection === 'asc' ? 'bi-arrow-up-short' : 'bi-arrow-down-short']"
               ></i>
             </th>
             <th
@@ -40,18 +72,30 @@
               @click="emit('set-sort', 'value')"
               title="Sort by Value"
             >
-              {{ $t('data_header') }}
+              <span>{{ $t('data_header') }}</span>
               <i
                 v-if="sortColumn === 'value'"
-                :class="['bi', sortDirection === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down']"
+                :class="['bi', sortDirection === 'asc' ? 'bi-arrow-up-short' : 'bi-arrow-down-short']"
               ></i>
             </th>
           </tr>
         </thead>
-        <tbody class="text-dark bg-white">
-          <tr v-for="row in tableData" :key="row.iso_a3">
-            <td>{{ row.name }}</td>
-            <td class="text-end">{{ formatValue(row.value) }}</td>
+        <tbody>
+          <tr
+            v-for="row in filteredData"
+            :key="row.iso_a3"
+            :data-iso="row.iso_a3"
+            :class="['clickable-row', { 'selected-row': selectedCountryIso === row.iso_a3 }]"
+            @click="emit('select-country', row.iso_a3)"
+          >
+            <td class="rank-cell">{{ row.rank ? `#${row.rank}` : '—' }}</td>
+            <td class="country-cell">{{ row.name }}</td>
+            <td class="value-cell text-end">{{ formatValue(row.value) }}</td>
+          </tr>
+          <tr v-if="filteredData.length === 0">
+            <td colspan="3" class="text-center py-4 text-secondary">
+              No matching countries
+            </td>
           </tr>
         </tbody>
       </table>
@@ -60,30 +104,48 @@
 </template>
 
 <script setup>
-defineProps({
+import { ref, computed, watch, nextTick } from 'vue'
+
+const props = defineProps({
   tableData: { type: Array, required: true },
   isTableCollapsed: { type: Boolean, default: false },
   sortColumn: { type: String, required: true },
-  sortDirection: { type: String, required: true }
+  sortDirection: { type: String, required: true },
+  selectedCountryIso: { type: String, default: '' }
 })
 
-const emit = defineEmits(['update:isTableCollapsed', 'set-sort', 'download-csv'])
+const emit = defineEmits(['update:isTableCollapsed', 'set-sort', 'download-csv', 'select-country'])
+
+const searchQuery = ref('')
+const tableContainerRef = ref(null)
+
+const filteredData = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return props.tableData
+  return props.tableData.filter(
+    (r) =>
+      r.name?.toLowerCase().includes(q) ||
+      r.iso_a3?.toLowerCase().includes(q)
+  )
+})
+
+watch(
+  () => props.selectedCountryIso,
+  async (iso) => {
+    if (!iso || props.isTableCollapsed) return
+    await nextTick()
+    const rowEl = tableContainerRef.value?.querySelector(`tr[data-iso="${iso}"]`)
+    if (rowEl) {
+      rowEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }
+)
 
 const formatValue = (val) =>
   val == null
     ? 'N/A'
-    : parseFloat(val).toLocaleString('en-EN', {
+    : parseFloat(val).toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       })
 </script>
-
-<style scoped>
-@media (max-width: 430px) and (max-height: 932px) {
-  .table-panel {
-    order: 1;
-    top: 30%;
-    left: 10%;
-  }
-}
-</style>

@@ -2,13 +2,15 @@
 # IMPORTS
 # =============================================================================
 # --- Standard library ---
+import logging
 import os
-import json
+import time
 from itertools import groupby
 from operator import itemgetter
+from typing import Any
 
 # --- Third-party ---
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from google.cloud import bigquery
 from google.cloud.bigquery.client import Client
 
@@ -20,19 +22,57 @@ from app.schemas import schemas
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+_GEOMETRY_PATH = os.path.normpath(
+    os.path.join(_CURRENT_DIR, "..", "..", "..", "api", "static", "world-geometry.json")
+)
+_WORLD_GEOMETRY_BYTES: bytes | None = None
+_METADATA_CACHE: dict[str, tuple[float, Any]] = {}
+
+
+def _get_cached(key: str) -> Any | None:
+    entry = _METADATA_CACHE.get(key)
+    if entry is None:
+        return None
+    expires_at, value = entry
+    if time.monotonic() >= expires_at:
+        _METADATA_CACHE.pop(key, None)
+        return None
+    return value
+
+
+def _set_cached(key: str, value: Any) -> Any:
+    ttl = max(0, settings.metadata_cache_ttl_seconds)
+    if ttl > 0:
+        _METADATA_CACHE[key] = (time.monotonic() + ttl, value)
+    return value
+
 
 @router.get("/world-geometry", tags=["Metadata"])
 def get_world_geometry():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    app_root_dir = os.path.join(current_dir, '..', '..', '..')
-    file_path = os.path.join(app_root_dir, 'api', 'static', 'world-geometry.json')
-    normalized_path = os.path.normpath(file_path)
-    with open(normalized_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    global _WORLD_GEOMETRY_BYTES
+    try:
+        if _WORLD_GEOMETRY_BYTES is None:
+            with open(_GEOMETRY_PATH, "rb") as f:
+                _WORLD_GEOMETRY_BYTES = f.read()
+        return Response(
+            content=_WORLD_GEOMETRY_BYTES,
+            media_type="application/json",
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+    except Exception:
+        logger.exception("Failed to read world-geometry.json")
+        raise HTTPException(status_code=500, detail="Internal error loading world geometry.")
+
 
 @router.get("/countries", response_model=list[schemas.Country], tags=["Metadata"])
 def get_countries(client: Client = Depends(get_session)):
+    cached = _get_cached("countries")
+    if cached is not None:
+        return cached
     try:
         table_id = f"{settings.gcp_project_id}.{settings.bq_dataset}.dim_countries"
         query = f"""
@@ -46,12 +86,17 @@ def get_countries(client: Client = Depends(get_session)):
         """
         query_job = client.query(query)
         results = [dict(row) for row in query_job]
-        return results
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-   
+        return _set_cached("countries", results)
+    except Exception:
+        logger.exception("Failed to query countries metadata")
+        raise HTTPException(status_code=500, detail="Internal error retrieving countries.")
+
+
 @router.get("/indicators", response_model=list[schemas.IndicatorGroup], tags=["Metadata"])
 def get_available_indicators(client: Client = Depends(get_session)):
+    cached = _get_cached("indicators")
+    if cached is not None:
+        return cached
     try:
         table_id = f"{settings.gcp_project_id}.{settings.bq_dataset}.dim_indicators"
         query = f"""
@@ -62,43 +107,50 @@ def get_available_indicators(client: Client = Depends(get_session)):
             ORDER BY category, indicator_name
         """
         results = [dict(row) for row in client.query(query)]
-        return [
+        grouped = [
             {
-                "category": key, 
-                "indicators": [{"indicator_name": item['indicator_name']} 
-                for item in group]
+                "category": key,
+                "indicators": [{"indicator_name": item["indicator_name"]} for item in group],
             }
-            for key, group 
-            in groupby(results, key=itemgetter('category'))
+            for key, group in groupby(results, key=itemgetter("category"))
         ]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
+        return _set_cached("indicators", grouped)
+    except Exception:
+        logger.exception("Failed to query indicators metadata")
+        raise HTTPException(status_code=500, detail="Internal error retrieving indicators.")
+
+
 @router.get("/years", response_model=list[int], tags=["Metadata"])
 def get_available_years(client: Client = Depends(get_session), indicator: str = ""):
     if not indicator:
         raise HTTPException(status_code=400, detail="Indicator is required")
+    cache_key = f"years:{indicator}"
+    cached = _get_cached(cache_key)
+    if cached is not None:
+        return cached
     try:
         table_id = f"{settings.gcp_project_id}.{settings.bq_dataset}.fact_indicators"
-        
+
         query = f"""
-            SELECT DISTINCT SAFE_CAST(year AS INT64) AS valid_year
+            SELECT
+                MIN(SAFE_CAST(year AS INT64)) AS min_year,
+                MAX(SAFE_CAST(year AS INT64)) AS max_year
             FROM `{table_id}`
             WHERE indicator_name = @indicator
-            AND SAFE_CAST(year AS INT64) IS NOT NULL
+              AND SAFE_CAST(year AS INT64) IS NOT NULL
+              AND SAFE_CAST(value AS FLOAT64) IS NOT NULL
         """
         job_config = bigquery.QueryJobConfig(
             query_parameters=[
                 bigquery.ScalarQueryParameter("indicator", "STRING", indicator),
             ]
         )
-        result = client.query(query, job_config=job_config).result()
-        
-        years = [row.valid_year for row in result if row.valid_year is not None]
-        
-        if not years:
-            return []
-        
-        return [min(years), max(years)]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        rows = list(client.query(query, job_config=job_config).result())
+        if not rows or rows[0].min_year is None or rows[0].max_year is None:
+            return _set_cached(cache_key, [])
+
+        bounds = [int(rows[0].min_year), int(rows[0].max_year)]
+        return _set_cached(cache_key, bounds)
+    except Exception:
+        logger.exception("Failed to query available years for indicator=%s", indicator)
+        raise HTTPException(status_code=500, detail="Internal error retrieving available years.")

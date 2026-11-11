@@ -40,31 +40,44 @@ export function useYearRange(selectedIndicator) {
   const fromYear = ref(2000)
   const toYear = ref(2020)
   const yearRangeError = ref(null)
+  const yearBoundsVersion = ref(0)
+  const activeIndicatorForYears = ref('')
+  let yearsAbortController = null
 
   const sliderTrackStyle = computed(() =>
     getSliderTrackStyle(fromYear.value, toYear.value, sliderMinYear.value, sliderMaxYear.value)
   )
 
   async function loadYearBounds() {
-    if (selectedIndicator.value) {
-      try {
-        yearRangeError.value = null
-        const bounds = await fetchYears(selectedIndicator.value)
-        if (bounds && bounds.length === 2) {
-          sliderMinYear.value = bounds[0]
-          sliderMaxYear.value = bounds[1]
-          fromYear.value = bounds[0]
-          toYear.value = bounds[1]
-        } else if (bounds && bounds.length > 0) {
-          sliderMinYear.value = bounds[0]
-          sliderMaxYear.value = bounds[0]
-          fromYear.value = bounds[0]
-          toYear.value = bounds[0]
-        }
-      } catch (err) {
-        console.error('Failed to load year bounds:', err)
-        yearRangeError.value = 'Could not load available years for this indicator.'
+    if (yearsAbortController) {
+      yearsAbortController.abort()
+    }
+    const indicator = selectedIndicator.value
+    if (!indicator) {
+      activeIndicatorForYears.value = ''
+      return
+    }
+    yearsAbortController = new AbortController()
+    try {
+      yearRangeError.value = null
+      const bounds = await fetchYears(indicator, { signal: yearsAbortController.signal })
+      if (bounds && bounds.length === 2) {
+        sliderMinYear.value = bounds[0]
+        sliderMaxYear.value = bounds[1]
+        fromYear.value = bounds[0]
+        toYear.value = bounds[1]
+      } else if (bounds && bounds.length > 0) {
+        sliderMinYear.value = bounds[0]
+        sliderMaxYear.value = bounds[0]
+        fromYear.value = bounds[0]
+        toYear.value = bounds[0]
       }
+      activeIndicatorForYears.value = indicator
+      yearBoundsVersion.value += 1
+    } catch (err) {
+      if (err?.name === 'AbortError') return
+      console.error('Failed to load year bounds:', err)
+      yearRangeError.value = 'Could not load available years for this indicator.'
     }
   }
 
@@ -86,42 +99,128 @@ export function useYearRange(selectedIndicator) {
     fromYear,
     toYear,
     sliderTrackStyle,
-    yearRangeError
+    yearRangeError,
+    yearBoundsVersion,
+    activeIndicatorForYears
   }
 }
 
-export function useIndicatorData(selectedIndicator, fromYear, toYear, sortBy) {
-  const tableData = ref([])
+export function useIndicatorData(
+  selectedIndicator,
+  fromYear,
+  toYear,
+  sortBy,
+  yearBoundsVersion,
+  activeIndicatorForYears,
+  yearRangeError
+) {
+  const rawData = ref([])
   const loading = ref(false)
   const dataError = ref(null)
+  let dataAbortController = null
+
+  const tableData = computed(() => {
+    const validSorted = [...rawData.value]
+      .filter((r) => r.value != null)
+      .sort((a, b) => b.value - a.value)
+    const totalRanked = validSorted.length
+    const rankMap = new Map()
+    validSorted.forEach((r, idx) => {
+      rankMap.set(r.iso_a3, idx + 1)
+    })
+
+    const rows = rawData.value.map((r) => ({
+      ...r,
+      rank: rankMap.get(r.iso_a3) ?? null,
+      totalRanked
+    }))
+
+    const currentSort = sortBy?.value || 'country_asc'
+    return rows.sort((a, b) => {
+      if (currentSort === 'country_asc') {
+        return (a.name || '').localeCompare(b.name || '')
+      }
+      if (currentSort === 'country_desc') {
+        return (b.name || '').localeCompare(a.name || '')
+      }
+      if (currentSort === 'value_asc') {
+        return (a.value ?? Infinity) - (b.value ?? Infinity)
+      }
+      if (currentSort === 'value_desc') {
+        return (b.value ?? -Infinity) - (a.value ?? -Infinity)
+      }
+      return 0
+    })
+  })
 
   async function loadData() {
     if (!selectedIndicator.value) {
-      tableData.value = []
+      rawData.value = []
+      loading.value = false
       return
     }
+    if (dataAbortController) {
+      dataAbortController.abort()
+    }
+    const controller = new AbortController()
+    dataAbortController = controller
+
     loading.value = true
     dataError.value = null
     try {
-      tableData.value = await fetchIndicatorData(
+      const result = await fetchIndicatorData(
         selectedIndicator.value,
         fromYear.value,
         toYear.value,
-        sortBy.value
+        sortBy.value,
+        { signal: controller.signal }
       )
-    } catch {
+      rawData.value = result
+    } catch (err) {
+      if (err?.name === 'AbortError') return
       dataError.value = 'Failed to load indicator data.'
-      tableData.value = []
+      rawData.value = []
     } finally {
-      loading.value = false
+      if (dataAbortController === controller) {
+        loading.value = false
+      }
     }
   }
 
   const debouncedLoad = debounce(loadData, 400)
-  watch(selectedIndicator, () => {
-    tableData.value = []
+
+  watch(selectedIndicator, (newInd) => {
+    debouncedLoad.cancel()
+    if (dataAbortController) {
+      dataAbortController.abort()
+    }
+    rawData.value = []
+    dataError.value = null
+    loading.value = !!newInd
   })
-  watch([fromYear, toYear, sortBy], debouncedLoad, { immediate: true })
+
+  watch([fromYear, toYear], () => {
+    if (!selectedIndicator.value) return
+    if (activeIndicatorForYears && activeIndicatorForYears.value !== selectedIndicator.value) {
+      return
+    }
+    debouncedLoad()
+  })
+
+  if (yearBoundsVersion) {
+    watch(yearBoundsVersion, () => {
+      debouncedLoad.cancel()
+      loadData()
+    })
+  }
+
+  if (yearRangeError) {
+    watch(yearRangeError, (err) => {
+      if (err) {
+        loading.value = false
+      }
+    })
+  }
 
   return { tableData, loading, dataError }
 }
@@ -150,7 +249,7 @@ export function useTableState(selectedIndicator, fromYear, toYear) {
   }
 }
 
-export function useMapChloropleth(geojsonData, tableData) {
+export function useMapChloropleth(geojsonData, tableData, selectedCountryIso) {
   const mapData = computed(() =>
     geojsonData.value ? mergeGeojsonWithData(geojsonData.value, tableData.value) : null
   )
@@ -159,6 +258,7 @@ export function useMapChloropleth(geojsonData, tableData) {
   return {
     mapData,
     valueBounds,
-    getStyleForFeature: (feature) => getFeatureStyle(feature, valueBounds.value)
+    getStyleForFeature: (feature) =>
+      getFeatureStyle(feature, valueBounds.value, selectedCountryIso?.value || '')
   }
 }

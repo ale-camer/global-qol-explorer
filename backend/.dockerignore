@@ -1,24 +1,21 @@
-# Ignorar la carpeta del entorno virtual
-
+# Virtual environments & local config
 venv/
 .venv/
 .env
+.env.*
+gcp-credentials.json
 
-# Ignorar la caché de Python
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
 
-**pycache**/
-\*.pyc
+# Offline geometry builder assets (not needed at API runtime; world-geometry.json is already in app/api/static/)
+geometries/
 
-# Ignorar archivos de configuración de IDEs
-
-.vscode/
-.idea/
-
-# Ignorar el repositorio de Git
-
+# Git & IDE metadata
 .git
 .gitignore
-
-# Ignorar otros archivos de configuración de despliegue si no los usas en Docker
-
+.vscode/
+.idea/
 fly.toml

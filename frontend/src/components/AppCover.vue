@@ -1,17 +1,20 @@
 <template>
   <div class="cover-overlay">
-    <div class="cover-content p-5">
-      <h1 class="display-3 fw-bold mb-3">{{ $t('title') }}</h1>
-      <p class="lead mb-4">{{ $t('first_paragraph_intro') }}</p>
-      <p class="mb-5 fs-5">{{ $t('second_paragraph_intro') }}</p>
-      <button class="explore-button btn btn-lg" @click="emit('start-explore')">
-        {{ $t('intro_button') }}
-        <i class="bi bi-arrow-right-circle-fill ms-2"></i>
+    <div class="cover-content">
+      <img :src="qolLogo" alt="Global Quality of Life Explorer" class="cover-app-logo" />
+      <h1 class="cover-title">{{ $t('title') }}</h1>
+      <p class="cover-lead">{{ $t('first_paragraph_intro') }}</p>
+      <p class="cover-sub">{{ $t('second_paragraph_intro') }}</p>
+      <button class="explore-button" @click="emit('start-explore')">
+        <span>{{ $t('intro_button') }}</span>
+        <i class="bi bi-arrow-right"></i>
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
+import qolLogo from '../assets/qol.png'
+
 const emit = defineEmits(['start-explore'])
 </script>

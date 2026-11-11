@@ -16,77 +16,130 @@ export const formatIndicatorName = (name) => {
     .replace(/Researchers In Rd Per Million People/gi, 'Researchers In R&D Per Million People')
     .replace(/Children Per Woman Un/gi, 'Children Per Woman')
     .replace(/Pm25 Air Pollution/gi, 'PM2.5 Air Pollution (Fine Particulate Matter)')
+    .replace(/\bGdp\b/gi, 'GDP')
+    .replace(/\bHdi\b/gi, 'HDI')
+    .replace(/\bCo2\b/gi, 'CO₂')
 
   return formatted.trim()
 }
 
 export const COLOR_PALETTE = [
-  '#FFFFE5',
-  '#FFF7BC',
-  '#FEE391',
-  '#FEC44F',
-  '#FE9929',
-  '#EC7014',
-  '#CC4C02',
-  '#993404',
-  '#662506'
+  '#fef08a',
+  '#fde047',
+  '#facc15',
+  '#fbbf24',
+  '#fb923c',
+  '#f97316',
+  '#ea580c',
+  '#dc2626',
+  '#991b1b'
 ]
 
 export function getColorForValue(value, bounds) {
-  if (value == null) return '#CCCCCC'
+  if (value == null) return '#1e293b'
   const { min, max } = bounds
   const ratio = max === min ? 0.5 : (value - min) / (max - min)
   const idx = Math.min(Math.floor(ratio * COLOR_PALETTE.length), COLOR_PALETTE.length - 1)
   return COLOR_PALETTE[idx]
 }
 
-export const getFeatureStyle = (feature, bounds) => ({
-  fillColor: getColorForValue(feature.properties.value, bounds),
-  weight: 1,
-  opacity: 1,
-  color: 'white',
-  fillOpacity: 0.8
-})
+export const getFeatureStyle = (feature, bounds, selectedIso = '') => {
+  const hasValue = feature.properties.value != null
+  const isSelected = selectedIso && feature.properties.iso_a3 === selectedIso
+  return {
+    fillColor: getColorForValue(feature.properties.value, bounds),
+    weight: isSelected ? 2.6 : 0.8,
+    opacity: 1,
+    color: isSelected ? '#38bdf8' : hasValue ? '#0f172a' : '#334155',
+    fillOpacity: isSelected ? 0.96 : hasValue ? 0.82 : 0.45
+  }
+}
 
-export const bindFeatureInteractions = (feature, layer) => {
+const escapeHtml = (str) =>
+  String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+
+export const createFeatureInteractionHandler = (onCountryClick, getSelectedIso) => (feature, layer) => {
   const val = feature.properties.value
-  const tooltipHtml = `<b>${feature.properties.name}</b><br>${
-    val === null ? 'No data' : parseFloat(val).toFixed(2)
-  }`
-  layer.bindTooltip(tooltipHtml, { sticky: true })
+  const rank = feature.properties.rank
+  const totalRanked = feature.properties.totalRanked
+  const safeName = escapeHtml(feature.properties.name)
+  const formattedVal =
+    val == null
+      ? 'No data'
+      : Number(val).toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })
+  const rankHtml =
+    rank != null && totalRanked
+      ? `<span class="map-tooltip-rank">#${rank} / ${totalRanked}</span>`
+      : ''
+  const tooltipHtml = `<div class="map-tooltip-inner"><div class="map-tooltip-header"><span class="map-tooltip-country">${safeName}</span>${rankHtml}</div><span class="map-tooltip-value">${formattedVal}</span></div>`
+  layer.bindTooltip(tooltipHtml, { sticky: true, className: 'dark-slate-tooltip' })
   layer.on({
-    mouseover: (e) => e.target.setStyle({ weight: 3, color: '#666' }),
-    mouseout: (e) => e.target.setStyle({ weight: 1, color: 'white' })
+    mouseover: (e) =>
+      e.target.setStyle({
+        weight: 2.4,
+        color: '#38bdf8',
+        fillOpacity: val == null ? 0.6 : 0.95
+      }),
+    mouseout: (e) => {
+      const isSelected = getSelectedIso && getSelectedIso() === feature.properties.iso_a3
+      e.target.setStyle({
+        weight: isSelected ? 2.6 : 0.8,
+        color: isSelected ? '#38bdf8' : val != null ? '#0f172a' : '#334155',
+        fillOpacity: isSelected ? 0.96 : val != null ? 0.82 : 0.45
+      })
+    },
+    click: () => {
+      if (onCountryClick && feature.properties?.iso_a3) {
+        onCountryClick(feature.properties.iso_a3)
+      }
+    }
   })
 }
 
+export const bindFeatureInteractions = createFeatureInteractionHandler()
+
 export function mergeGeojsonWithData(geojson, dataRows) {
   if (!geojson) return null
+  const clone = JSON.parse(JSON.stringify(geojson))
+  clone.features = clone.features.filter((f) => f.properties?.iso_a3 !== 'ATA')
   if (!dataRows || dataRows.length === 0) {
-    const clone = JSON.parse(JSON.stringify(geojson))
-    clone.features.forEach((f) => (f.properties.value = null))
+    clone.features.forEach((f) => {
+      f.properties.value = null
+      f.properties.rank = null
+      f.properties.totalRanked = 0
+    })
     return clone
   }
-  const valueMap = new Map(dataRows.map((row) => [row.iso_a3, row.value]))
-  const clone = JSON.parse(JSON.stringify(geojson))
+  const rowMap = new Map(dataRows.map((row) => [row.iso_a3, row]))
   clone.features.forEach((f) => {
-    f.properties.value = valueMap.get(f.properties.iso_a3) || null
+    const matched = rowMap.get(f.properties.iso_a3)
+    f.properties.value = matched ? (matched.value ?? null) : null
+    f.properties.rank = matched?.rank ?? null
+    f.properties.totalRanked = matched?.totalRanked ?? 0
   })
   return clone
 }
 
 export function getSliderTrackStyle(fromYear, toYear, minYear, maxYear) {
-  if (!minYear || !maxYear || minYear === maxYear) return { background: '#007bff' }
+  if (!minYear || !maxYear || minYear === maxYear) return { background: '#38bdf8' }
   const startPct = ((fromYear - minYear) / (maxYear - minYear)) * 100
   const endPct = ((toYear - minYear) / (maxYear - minYear)) * 100
-  if (isNaN(startPct) || isNaN(endPct)) return { background: '#ddd' }
+  if (isNaN(startPct) || isNaN(endPct)) return { background: '#334155' }
   return {
-    background: `linear-gradient(to right, #ddd ${startPct}%, #007bff ${startPct}%, #007bff ${endPct}%, #ddd ${endPct}%)`
+    background: `linear-gradient(to right, #334155 ${startPct}%, #38bdf8 ${startPct}%, #3b82f6 ${endPct}%, #334155 ${endPct}%)`
   }
 }
 
 export function computeValueBounds(dataRows) {
-  const validValues = dataRows.map((r) => r.value).filter((v) => v !== null)
+  const validValues = dataRows.map((r) => r.value).filter((v) => v != null)
   if (validValues.length === 0) return { min: 0, max: 1 }
   const min = Math.min(...validValues)
   const max = Math.max(...validValues)
@@ -95,10 +148,12 @@ export function computeValueBounds(dataRows) {
 
 export function debounce(fn, delay = 400) {
   let timer
-  return (...args) => {
+  const debounced = (...args) => {
     clearTimeout(timer)
     timer = setTimeout(() => fn(...args), delay)
   }
+  debounced.cancel = () => clearTimeout(timer)
+  return debounced
 }
 
 export function toggleSortOrder(currentSort, column) {
@@ -111,11 +166,12 @@ export function downloadCsv(rows, indicatorName, fromYear, toYear) {
     alert('No data available to download.')
     return
   }
-  const headers = ['Country', 'Average Value']
+  const headers = ['Rank', 'Country', 'Average Value']
   const csvRows = rows.map((r) => {
+    const rank = r.rank ?? 'N/A'
     const country = `"${r.name.replace(/"/g, '""')}"`
-    const val = r.value === null ? 'N/A' : parseFloat(r.value).toFixed(2)
-    return [country, val].join(',')
+    const val = r.value == null ? 'N/A' : parseFloat(r.value).toFixed(2)
+    return [rank, country, val].join(',')
   })
   const csvContent = [headers.join(','), ...csvRows].join('\n')
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
