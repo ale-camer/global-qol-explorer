@@ -15,7 +15,7 @@ from google.cloud import bigquery
 from google.cloud.bigquery.client import Client
 
 # --- Project ---
-from app.db.session import get_session
+from app.db.session import get_session, get_sqlite_conn, has_sqlite_snapshot
 from app.core.config import settings
 from app.schemas import schemas
 
@@ -69,23 +69,29 @@ def get_world_geometry():
 
 
 @router.get("/countries", response_model=list[schemas.Country], tags=["Metadata"])
-def get_countries(client: Client = Depends(get_session)):
+def get_countries(client: Client | None = Depends(get_session)):
     cached = _get_cached("countries")
     if cached is not None:
         return cached
     try:
-        table_id = f"{settings.gcp_project_id}.{settings.bq_dataset}.dim_countries"
-        query = f"""
-            SELECT 
-                country_id, 
-                country_name, 
-                code, 
-                continent 
-            FROM `{table_id}` 
-            ORDER BY country_name
-        """
-        query_job = client.query(query)
-        results = [dict(row) for row in query_job]
+        if has_sqlite_snapshot():
+            with get_sqlite_conn() as conn:
+                rows = conn.execute(
+                    "SELECT country_id, country_name, code, continent FROM dim_countries ORDER BY country_name"
+                ).fetchall()
+                results = [dict(r) for r in rows]
+        else:
+            table_id = f"{settings.gcp_project_id}.{settings.bq_dataset}.dim_countries"
+            query = f"""
+                SELECT 
+                    country_id, 
+                    country_name, 
+                    code, 
+                    continent 
+                FROM `{table_id}` 
+                ORDER BY country_name
+            """
+            results = [dict(row) for row in client.query(query)]
         return _set_cached("countries", results)
     except Exception:
         logger.exception("Failed to query countries metadata")
@@ -93,20 +99,27 @@ def get_countries(client: Client = Depends(get_session)):
 
 
 @router.get("/indicators", response_model=list[schemas.IndicatorGroup], tags=["Metadata"])
-def get_available_indicators(client: Client = Depends(get_session)):
+def get_available_indicators(client: Client | None = Depends(get_session)):
     cached = _get_cached("indicators")
     if cached is not None:
         return cached
     try:
-        table_id = f"{settings.gcp_project_id}.{settings.bq_dataset}.dim_indicators"
-        query = f"""
-            SELECT
-                category,
-                indicator AS indicator_name
-            FROM `{table_id}`
-            ORDER BY category, indicator_name
-        """
-        results = [dict(row) for row in client.query(query)]
+        if has_sqlite_snapshot():
+            with get_sqlite_conn() as conn:
+                rows = conn.execute(
+                    "SELECT category, indicator AS indicator_name FROM dim_indicators ORDER BY category, indicator_name"
+                ).fetchall()
+                results = [dict(r) for r in rows]
+        else:
+            table_id = f"{settings.gcp_project_id}.{settings.bq_dataset}.dim_indicators"
+            query = f"""
+                SELECT
+                    category,
+                    indicator AS indicator_name
+                FROM `{table_id}`
+                ORDER BY category, indicator_name
+            """
+            results = [dict(row) for row in client.query(query)]
         grouped = [
             {
                 "category": key,
@@ -121,7 +134,7 @@ def get_available_indicators(client: Client = Depends(get_session)):
 
 
 @router.get("/years", response_model=list[int], tags=["Metadata"])
-def get_available_years(client: Client = Depends(get_session), indicator: str = ""):
+def get_available_years(client: Client | None = Depends(get_session), indicator: str = ""):
     if not indicator:
         raise HTTPException(status_code=400, detail="Indicator is required")
     cache_key = f"years:{indicator}"
@@ -129,8 +142,22 @@ def get_available_years(client: Client = Depends(get_session), indicator: str = 
     if cached is not None:
         return cached
     try:
-        table_id = f"{settings.gcp_project_id}.{settings.bq_dataset}.fact_indicators"
+        if has_sqlite_snapshot():
+            with get_sqlite_conn() as conn:
+                row = conn.execute(
+                    """
+                    SELECT MIN(f.year) AS min_year, MAX(f.year) AS max_year
+                    FROM fact_indicators_compact f
+                    JOIN dim_indicators d ON f.indicator_id = d.indicator_id
+                    WHERE d.indicator = ?
+                    """,
+                    (indicator,),
+                ).fetchone()
+                if not row or row["min_year"] is None or row["max_year"] is None:
+                    return _set_cached(cache_key, [])
+                return _set_cached(cache_key, [int(row["min_year"]), int(row["max_year"])])
 
+        table_id = f"{settings.gcp_project_id}.{settings.bq_dataset}.fact_indicators"
         query = f"""
             SELECT
                 MIN(SAFE_CAST(year AS INT64)) AS min_year,

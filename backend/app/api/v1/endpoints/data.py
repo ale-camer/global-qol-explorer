@@ -11,7 +11,7 @@ from google.cloud import bigquery
 from google.cloud.bigquery.client import Client
 
 # --- Project ---
-from app.db.session import get_session
+from app.db.session import get_session, get_sqlite_conn, has_sqlite_snapshot
 from app.core.config import settings
 from app.schemas import schemas
 
@@ -31,7 +31,7 @@ def get_indicator_data(
     sort_by: Literal[
         "country_asc", "country_desc", "value_asc", "value_desc"
     ] = Query("country_asc", description="Sorting order"),
-    client: Client = Depends(get_session)
+    client: Client | None = Depends(get_session)
 ):
     if start_year > end_year:
         raise HTTPException(
@@ -47,42 +47,68 @@ def get_indicator_data(
     }
     order_by_clause = sort_options.get(sort_by, "name ASC")
 
-    fact_table = f"{settings.gcp_project_id}.{settings.bq_dataset}.fact_indicators"
-    countries_table = f"{settings.gcp_project_id}.{settings.bq_dataset}.dim_countries"
-
-    query_str = f"""
-        WITH FilteredFacts AS (
-            SELECT
-                country_id,
-                SAFE_CAST(value AS FLOAT64) as numeric_value
-            FROM `{fact_table}`
-            WHERE indicator_name = @indicator_name
-              AND SAFE_CAST(year AS INT64) BETWEEN @start_year AND @end_year
-              AND SAFE_CAST(value AS FLOAT64) IS NOT NULL
-        )
-        SELECT
-            c.code AS iso_a3,
-            c.country_name AS name,
-            AVG(ff.numeric_value) AS value
-        FROM FilteredFacts ff
-        JOIN `{countries_table}` c ON ff.country_id = c.country_id
-        GROUP BY c.code, c.country_name
-        ORDER BY {order_by_clause};
-    """
-
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter("indicator_name", "STRING", indicator_name),
-            bigquery.ScalarQueryParameter("start_year", "INT64", start_year),
-            bigquery.ScalarQueryParameter("end_year", "INT64", end_year),
-        ]
-    )
-
     try:
+        if has_sqlite_snapshot():
+            sql = f"""
+                SELECT
+                    c.code AS iso_a3,
+                    c.country_name AS name,
+                    AVG(f.value) AS value
+                FROM fact_indicators_compact f
+                JOIN dim_indicators d ON f.indicator_id = d.indicator_id
+                JOIN dim_countries c ON f.country_id = c.country_id
+                WHERE d.indicator = ?
+                  AND f.year BETWEEN ? AND ?
+                GROUP BY c.code, c.country_name
+                ORDER BY {order_by_clause}
+            """
+            with get_sqlite_conn() as conn:
+                rows = conn.execute(sql, (indicator_name, start_year, end_year)).fetchall()
+                results = [dict(r) for r in rows]
+            logger.info(
+                "SQLite query executed for indicator=%s (%d-%d), rows=%d",
+                indicator_name,
+                start_year,
+                end_year,
+                len(results),
+            )
+            return results
+
+        fact_table = f"{settings.gcp_project_id}.{settings.bq_dataset}.fact_indicators"
+        countries_table = f"{settings.gcp_project_id}.{settings.bq_dataset}.dim_countries"
+
+        query_str = f"""
+            WITH FilteredFacts AS (
+                SELECT
+                    country_id,
+                    SAFE_CAST(value AS FLOAT64) as numeric_value
+                FROM `{fact_table}`
+                WHERE indicator_name = @indicator_name
+                  AND SAFE_CAST(year AS INT64) BETWEEN @start_year AND @end_year
+                  AND SAFE_CAST(value AS FLOAT64) IS NOT NULL
+            )
+            SELECT
+                c.code AS iso_a3,
+                c.country_name AS name,
+                AVG(ff.numeric_value) AS value
+            FROM FilteredFacts ff
+            JOIN `{countries_table}` c ON ff.country_id = c.country_id
+            GROUP BY c.code, c.country_name
+            ORDER BY {order_by_clause};
+        """
+
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("indicator_name", "STRING", indicator_name),
+                bigquery.ScalarQueryParameter("start_year", "INT64", start_year),
+                bigquery.ScalarQueryParameter("end_year", "INT64", end_year),
+            ]
+        )
+
         query_job = client.query(query_str, job_config=job_config)
         results = [dict(row) for row in query_job]
         logger.info(
-            "Query executed for indicator=%s (%d-%d), rows=%d",
+            "BigQuery executed for indicator=%s (%d-%d), rows=%d",
             indicator_name,
             start_year,
             end_year,
