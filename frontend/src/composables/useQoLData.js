@@ -120,7 +120,21 @@ export function useIndicatorData(
   let dataAbortController = null
 
   const tableData = computed(() => {
-    const rows = [...rawData.value]
+    const validSorted = [...rawData.value]
+      .filter((r) => r.value != null)
+      .sort((a, b) => b.value - a.value)
+    const totalRanked = validSorted.length
+    const rankMap = new Map()
+    validSorted.forEach((r, idx) => {
+      rankMap.set(r.iso_a3, idx + 1)
+    })
+
+    const rows = rawData.value.map((r) => ({
+      ...r,
+      rank: rankMap.get(r.iso_a3) ?? null,
+      totalRanked
+    }))
+
     const currentSort = sortBy?.value || 'country_asc'
     return rows.sort((a, b) => {
       if (currentSort === 'country_asc') {
@@ -235,7 +249,7 @@ export function useTableState(selectedIndicator, fromYear, toYear) {
   }
 }
 
-export function useMapChloropleth(geojsonData, tableData) {
+export function useMapChloropleth(geojsonData, tableData, selectedCountryIso) {
   const mapData = computed(() =>
     geojsonData.value ? mergeGeojsonWithData(geojsonData.value, tableData.value) : null
   )
@@ -244,6 +258,7 @@ export function useMapChloropleth(geojsonData, tableData) {
   return {
     mapData,
     valueBounds,
-    getStyleForFeature: (feature) => getFeatureStyle(feature, valueBounds.value)
+    getStyleForFeature: (feature) =>
+      getFeatureStyle(feature, valueBounds.value, selectedCountryIso?.value || '')
   }
 }

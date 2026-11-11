@@ -1,113 +1,163 @@
 <template>
-  <div
-    :class="[
-      'controls-panel',
-      {
-        'highlight-onboarding': !selectedIndicator,
-        'active-panel': selectedIndicator
-      }
-    ]"
-  >
-    <!-- STEP 1: Categories (completely collapses into a clickable trigger once a category is chosen) -->
-    <div class="control-group">
-      <!-- Expanded Category List -->
-      <template v-if="isCategoryOpen">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <label class="control-label m-0">
-            <i class="bi bi-grid-1x2 me-1"></i>
-            Category
-          </label>
-          <button
-            v-if="selectedCategory"
-            type="button"
-            class="collapse-pill-btn"
-            @click="isCategoryOpen = false"
-          >
-            <i class="bi bi-chevron-up"></i>
-          </button>
-        </div>
-
-        <div class="category-grid">
-          <button
-            v-for="group in indicatorGroups"
-            :key="group.category"
-            type="button"
-            :class="['category-item', { active: selectedCategory === group.category }]"
-            @click="selectCategory(group.category)"
-          >
-            <span class="cat-icon">
-              <i :class="getCategoryIcon(group.category)"></i>
-            </span>
-            <span class="cat-name">{{ group.category }}</span>
-            <span class="cat-count">{{ group.indicators.length }}</span>
-          </button>
-        </div>
-      </template>
-
-      <!-- Collapsed Category Trigger (click to re-open categories) -->
+  <!-- MODE A: Bottom-Center Selection Dock (stays here for BOTH Step 1: Classification AND Step 2: Indicator) -->
+  <div v-if="isShowcaseOpen" class="category-showcase-dock">
+    <!-- Top bar of the bottom-center dock -->
+    <div class="showcase-header">
       <button
-        v-else
+        v-if="showcaseStep === 'indicators'"
         type="button"
-        class="collapsed-selector-bar"
-        title="Click to change category"
-        @click="openCategoryList"
+        class="back-to-cats-btn"
+        @click="backToClassifications"
       >
-        <span class="cat-icon">
-          <i :class="getCategoryIcon(selectedCategory)"></i>
-        </span>
-        <div class="collapsed-bar-text">
-          <span class="collapsed-bar-label">Category</span>
-          <span class="collapsed-bar-value">{{ selectedCategory }}</span>
-        </div>
-        <i class="bi bi-chevron-down ms-auto collapsed-chevron"></i>
+        <i class="bi bi-arrow-left"></i>
+        <span>{{ selectedCategory }}</span>
+      </button>
+
+      <div class="showcase-search-wrap">
+        <i class="bi bi-search showcase-search-icon"></i>
+        <input
+          v-model="showcaseSearch"
+          type="text"
+          class="showcase-search-input"
+          :placeholder="
+            showcaseStep === 'categories'
+              ? 'Search classification or indicator (e.g. GDP, Health, CO2)...'
+              : `Filter indicators in ${selectedCategory}...`
+          "
+          aria-label="Search classification or indicator"
+        />
+        <button
+          v-if="showcaseSearch"
+          type="button"
+          class="clear-search-btn"
+          @click="showcaseSearch = ''"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <button
+        v-if="selectedIndicator"
+        type="button"
+        class="showcase-close-btn"
+        title="Minimize to corner"
+        @click="isShowcaseOpen = false"
+      >
+        <i class="bi bi-x-lg"></i>
       </button>
     </div>
 
-    <!-- STEP 2: Indicators inside the chosen Category -->
-    <div
-      v-if="selectedCategory && activeCategoryIndicators.length > 0 && !isCategoryOpen"
-      class="control-group mt-3 pt-3 border-top-subtle"
-    >
-      <template v-if="isIndicatorListOpen">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <label class="control-label m-0">
-            <i class="bi bi-bar-chart-line me-1"></i>
-            {{ $t('indicator') }}
-          </label>
+    <!-- STEP 1 IN BOTTOM-CENTER DOCK: Visual Classification Cards -->
+    <template v-if="showcaseStep === 'categories'">
+      <!-- Direct indicator matches when typing in search -->
+      <div
+        v-if="showcaseSearch.trim() && matchingIndicatorsAll.length > 0"
+        class="quick-indicator-matches"
+      >
+        <span class="matches-label">Matching Indicators</span>
+        <div class="matches-pills">
           <button
-            v-if="selectedIndicator"
+            v-for="item in matchingIndicatorsAll"
+            :key="item.indicator_name"
             type="button"
-            class="collapse-pill-btn"
-            @click="isIndicatorListOpen = false"
+            class="match-pill-btn"
+            @click="selectCategoryAndIndicator(item.category, item.indicator_name)"
           >
-            <i class="bi bi-chevron-up"></i>
+            <i :class="[getCategoryMeta(item.category).icon, 'me-1']"></i>
+            <span>{{ formatIndicatorName(item.indicator_name) }}</span>
           </button>
         </div>
+      </div>
 
-        <div class="indicator-list">
-          <button
-            v-for="ind in activeCategoryIndicators"
-            :key="ind.indicator_name"
-            type="button"
-            :class="['indicator-item', { active: selectedIndicator === ind.indicator_name }]"
-            @click="onSelectIndicator(ind.indicator_name)"
+      <div class="category-cards-grid">
+        <button
+          v-for="group in filteredCategoryGroups"
+          :key="group.category"
+          type="button"
+          :class="['category-visual-card', { active: selectedCategory === group.category }]"
+          @click="selectClassification(group.category)"
+        >
+          <div
+            class="category-card-art"
+            :style="{ background: getCategoryMeta(group.category).gradient }"
           >
-            <span>{{ formatIndicatorName(ind.indicator_name) }}</span>
-            <i
-              v-if="selectedIndicator === ind.indicator_name"
-              class="bi bi-check-circle-fill ms-2"
-            ></i>
-          </button>
-        </div>
-      </template>
+            <i :class="[getCategoryMeta(group.category).icon, 'category-art-icon']"></i>
+            <span class="category-card-badge">{{ group.indicators.length }}</span>
+          </div>
+          <div class="category-card-body">
+            <span class="category-card-title">{{ group.category }}</span>
+          </div>
+        </button>
 
-      <!-- Collapsed Indicator Trigger (once an indicator is chosen, collapses cleanly; click to reopen) -->
+        <div v-if="filteredCategoryGroups.length === 0" class="no-categories-msg">
+          No matching classifications found.
+        </div>
+      </div>
+    </template>
+
+    <!-- STEP 2 IN BOTTOM-CENTER DOCK: Indicators of the chosen Classification -->
+    <template v-else>
+      <div class="showcase-indicators-grid">
+        <button
+          v-for="ind in filteredActiveIndicators"
+          :key="ind.indicator_name"
+          type="button"
+          :class="['showcase-indicator-card', { active: selectedIndicator === ind.indicator_name }]"
+          @click="onSelectIndicator(ind.indicator_name)"
+        >
+          <span
+            class="showcase-ind-icon"
+            :style="{ background: getCategoryMeta(selectedCategory).gradient }"
+          >
+            <i :class="getCategoryMeta(selectedCategory).icon"></i>
+          </span>
+          <span class="showcase-ind-name">{{ formatIndicatorName(ind.indicator_name) }}</span>
+          <i
+            :class="[
+              'bi ms-auto showcase-ind-arrow',
+              selectedIndicator === ind.indicator_name ? 'bi-check-circle-fill' : 'bi-arrow-right-short'
+            ]"
+          ></i>
+        </button>
+
+        <div v-if="filteredActiveIndicators.length === 0" class="no-categories-msg">
+          No matching indicators in this classification.
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- MODE B: Docked at Bottom-Left Corner over the Ocean ONLY AFTER an Indicator is chosen -->
+  <div v-else class="controls-panel active-panel">
+    <!-- Collapsed Classification Bar (click to reopen Step 1 in bottom-center) -->
+    <div class="control-group">
       <button
-        v-else
+        type="button"
+        class="collapsed-selector-bar"
+        title="Click to change classification"
+        @click="openClassificationsStep"
+      >
+        <span
+          class="cat-icon"
+          :style="{ background: getCategoryMeta(selectedCategory).gradient }"
+        >
+          <i :class="getCategoryMeta(selectedCategory).icon"></i>
+        </span>
+        <div class="collapsed-bar-text">
+          <span class="collapsed-bar-label">Classification</span>
+          <span class="collapsed-bar-value">{{ selectedCategory }}</span>
+        </div>
+        <i class="bi bi-grid-fill ms-auto collapsed-chevron"></i>
+      </button>
+    </div>
+
+    <!-- Collapsed Indicator Bar (click to reopen Step 2 in bottom-center) -->
+    <div class="control-group mt-2">
+      <button
         type="button"
         class="collapsed-selector-bar active-indicator-bar"
         title="Click to change indicator"
-        @click="isIndicatorListOpen = true"
+        @click="openIndicatorsStep"
       >
         <span class="cat-icon">
           <i class="bi bi-bar-chart-line-fill"></i>
@@ -120,7 +170,7 @@
       </button>
     </div>
 
-    <!-- STEP 3: Year Range Slider -->
+    <!-- Year Range Slider -->
     <div v-if="selectedIndicator" class="control-group mt-3 pt-3 border-top-subtle">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <label class="control-label m-0">
@@ -171,42 +221,127 @@ const props = defineProps({
 const emit = defineEmits(['update:selectedIndicator', 'update:fromYear', 'update:toYear'])
 
 const selectedCategory = ref('')
-const isCategoryOpen = ref(true)
-const isIndicatorListOpen = ref(true)
+const isShowcaseOpen = ref(true)
+const showcaseStep = ref('categories') // 'categories' | 'indicators'
+const showcaseSearch = ref('')
 
-const CATEGORY_ICONS = {
-  'Demography and Population Structure': 'bi-people-fill',
-  'Economy and Labor': 'bi-cash-coin',
-  'Education, Science and Technology': 'bi-mortarboard-fill',
-  'Environment and Sustainability': 'bi-tree-fill',
-  'Food and Nutrition': 'bi-basket2-fill',
-  'Health and Wellbeing': 'bi-heart-pulse-fill',
-  'Society, Security and Rights': 'bi-shield-check',
-  'Subjective Wellbeing and Human Development': 'bi-stars'
+const CATEGORY_META = {
+  'Demography and Population Structure': {
+    icon: 'bi-people-fill',
+    gradient: 'linear-gradient(135deg, rgba(14, 165, 233, 0.35), rgba(37, 99, 235, 0.45))'
+  },
+  'Economy and Labor': {
+    icon: 'bi-cash-coin',
+    gradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(5, 150, 105, 0.45))'
+  },
+  'Education, Science and Technology': {
+    icon: 'bi-mortarboard-fill',
+    gradient: 'linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(109, 40, 217, 0.45))'
+  },
+  'Environment and Sustainability': {
+    icon: 'bi-tree-fill',
+    gradient: 'linear-gradient(135deg, rgba(34, 197, 94, 0.35), rgba(21, 128, 61, 0.45))'
+  },
+  'Food and Nutrition': {
+    icon: 'bi-basket2-fill',
+    gradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(217, 119, 6, 0.45))'
+  },
+  'Health and Wellbeing': {
+    icon: 'bi-heart-pulse-fill',
+    gradient: 'linear-gradient(135deg, rgba(244, 63, 94, 0.35), rgba(225, 29, 72, 0.45))'
+  },
+  'Society, Security and Rights': {
+    icon: 'bi-shield-check',
+    gradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(30, 64, 175, 0.45))'
+  },
+  'Subjective Wellbeing and Human Development': {
+    icon: 'bi-stars',
+    gradient: 'linear-gradient(135deg, rgba(236, 72, 153, 0.35), rgba(190, 24, 93, 0.45))'
+  }
 }
 
-function getCategoryIcon(category) {
-  return CATEGORY_ICONS[category] || 'bi-folder2-open'
+function getCategoryMeta(category) {
+  return (
+    CATEGORY_META[category] || {
+      icon: 'bi-folder2-open',
+      gradient: 'linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(59, 130, 246, 0.35))'
+    }
+  )
 }
+
+const filteredCategoryGroups = computed(() => {
+  const q = showcaseSearch.value.trim().toLowerCase()
+  if (!q) return props.indicatorGroups
+  return props.indicatorGroups.filter((group) => {
+    const catMatch = group.category.toLowerCase().includes(q)
+    const indMatch = group.indicators.some((ind) =>
+      formatIndicatorName(ind.indicator_name).toLowerCase().includes(q)
+    )
+    return catMatch || indMatch
+  })
+})
+
+const matchingIndicatorsAll = computed(() => {
+  const q = showcaseSearch.value.trim().toLowerCase()
+  if (!q) return []
+  const matches = []
+  for (const group of props.indicatorGroups) {
+    for (const ind of group.indicators) {
+      if (formatIndicatorName(ind.indicator_name).toLowerCase().includes(q)) {
+        matches.push({ category: group.category, indicator_name: ind.indicator_name })
+      }
+    }
+  }
+  return matches.slice(0, 8)
+})
 
 const activeCategoryIndicators = computed(() => {
   const group = props.indicatorGroups.find((g) => g.category === selectedCategory.value)
   return group ? group.indicators : []
 })
 
-function openCategoryList() {
-  isCategoryOpen.value = true
+const filteredActiveIndicators = computed(() => {
+  const q = showcaseSearch.value.trim().toLowerCase()
+  if (!q) return activeCategoryIndicators.value
+  return activeCategoryIndicators.value.filter((ind) =>
+    formatIndicatorName(ind.indicator_name).toLowerCase().includes(q)
+  )
+})
+
+function selectClassification(category) {
+  selectedCategory.value = category
+  showcaseSearch.value = ''
+  showcaseStep.value = 'indicators'
 }
 
-function selectCategory(category) {
+function backToClassifications() {
+  showcaseSearch.value = ''
+  showcaseStep.value = 'categories'
+}
+
+function openClassificationsStep() {
+  showcaseSearch.value = ''
+  showcaseStep.value = 'categories'
+  isShowcaseOpen.value = true
+}
+
+function openIndicatorsStep() {
+  showcaseSearch.value = ''
+  showcaseStep.value = 'indicators'
+  isShowcaseOpen.value = true
+}
+
+function selectCategoryAndIndicator(category, indicatorName) {
   selectedCategory.value = category
-  isCategoryOpen.value = false
-  isIndicatorListOpen.value = true
+  showcaseSearch.value = ''
+  isShowcaseOpen.value = false
+  emit('update:selectedIndicator', indicatorName)
 }
 
 function onSelectIndicator(indicatorName) {
+  showcaseSearch.value = ''
+  isShowcaseOpen.value = false
   emit('update:selectedIndicator', indicatorName)
-  isIndicatorListOpen.value = false
 }
 
 watch(
@@ -218,7 +353,7 @@ watch(
       )
       if (found) {
         selectedCategory.value = found.category
-        isCategoryOpen.value = false
+        isShowcaseOpen.value = false
       }
     }
   }

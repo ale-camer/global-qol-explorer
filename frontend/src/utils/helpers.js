@@ -43,14 +43,15 @@ export function getColorForValue(value, bounds) {
   return COLOR_PALETTE[idx]
 }
 
-export const getFeatureStyle = (feature, bounds) => {
+export const getFeatureStyle = (feature, bounds, selectedIso = '') => {
   const hasValue = feature.properties.value != null
+  const isSelected = selectedIso && feature.properties.iso_a3 === selectedIso
   return {
     fillColor: getColorForValue(feature.properties.value, bounds),
-    weight: 0.8,
+    weight: isSelected ? 2.6 : 0.8,
     opacity: 1,
-    color: hasValue ? '#0f172a' : '#334155',
-    fillOpacity: hasValue ? 0.82 : 0.45
+    color: isSelected ? '#38bdf8' : hasValue ? '#0f172a' : '#334155',
+    fillOpacity: isSelected ? 0.96 : hasValue ? 0.82 : 0.45
   }
 }
 
@@ -62,8 +63,10 @@ const escapeHtml = (str) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
 
-export const bindFeatureInteractions = (feature, layer) => {
+export const createFeatureInteractionHandler = (onCountryClick, getSelectedIso) => (feature, layer) => {
   const val = feature.properties.value
+  const rank = feature.properties.rank
+  const totalRanked = feature.properties.totalRanked
   const safeName = escapeHtml(feature.properties.name)
   const formattedVal =
     val == null
@@ -72,35 +75,55 @@ export const bindFeatureInteractions = (feature, layer) => {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         })
-  const tooltipHtml = `<div class="map-tooltip-inner"><span class="map-tooltip-country">${safeName}</span><span class="map-tooltip-value">${formattedVal}</span></div>`
+  const rankHtml =
+    rank != null && totalRanked
+      ? `<span class="map-tooltip-rank">#${rank} / ${totalRanked}</span>`
+      : ''
+  const tooltipHtml = `<div class="map-tooltip-inner"><div class="map-tooltip-header"><span class="map-tooltip-country">${safeName}</span>${rankHtml}</div><span class="map-tooltip-value">${formattedVal}</span></div>`
   layer.bindTooltip(tooltipHtml, { sticky: true, className: 'dark-slate-tooltip' })
   layer.on({
     mouseover: (e) =>
       e.target.setStyle({
-        weight: 2.2,
+        weight: 2.4,
         color: '#38bdf8',
         fillOpacity: val == null ? 0.6 : 0.95
       }),
-    mouseout: (e) =>
+    mouseout: (e) => {
+      const isSelected = getSelectedIso && getSelectedIso() === feature.properties.iso_a3
       e.target.setStyle({
-        weight: 0.8,
-        color: val != null ? '#0f172a' : '#334155',
-        fillOpacity: val != null ? 0.82 : 0.45
+        weight: isSelected ? 2.6 : 0.8,
+        color: isSelected ? '#38bdf8' : val != null ? '#0f172a' : '#334155',
+        fillOpacity: isSelected ? 0.96 : val != null ? 0.82 : 0.45
       })
+    },
+    click: () => {
+      if (onCountryClick && feature.properties?.iso_a3) {
+        onCountryClick(feature.properties.iso_a3)
+      }
+    }
   })
 }
+
+export const bindFeatureInteractions = createFeatureInteractionHandler()
 
 export function mergeGeojsonWithData(geojson, dataRows) {
   if (!geojson) return null
   const clone = JSON.parse(JSON.stringify(geojson))
   clone.features = clone.features.filter((f) => f.properties?.iso_a3 !== 'ATA')
   if (!dataRows || dataRows.length === 0) {
-    clone.features.forEach((f) => (f.properties.value = null))
+    clone.features.forEach((f) => {
+      f.properties.value = null
+      f.properties.rank = null
+      f.properties.totalRanked = 0
+    })
     return clone
   }
-  const valueMap = new Map(dataRows.map((row) => [row.iso_a3, row.value]))
+  const rowMap = new Map(dataRows.map((row) => [row.iso_a3, row]))
   clone.features.forEach((f) => {
-    f.properties.value = valueMap.get(f.properties.iso_a3) ?? null
+    const matched = rowMap.get(f.properties.iso_a3)
+    f.properties.value = matched ? (matched.value ?? null) : null
+    f.properties.rank = matched?.rank ?? null
+    f.properties.totalRanked = matched?.totalRanked ?? 0
   })
   return clone
 }
@@ -143,11 +166,12 @@ export function downloadCsv(rows, indicatorName, fromYear, toYear) {
     alert('No data available to download.')
     return
   }
-  const headers = ['Country', 'Average Value']
+  const headers = ['Rank', 'Country', 'Average Value']
   const csvRows = rows.map((r) => {
+    const rank = r.rank ?? 'N/A'
     const country = `"${r.name.replace(/"/g, '""')}"`
     const val = r.value == null ? 'N/A' : parseFloat(r.value).toFixed(2)
-    return [country, val].join(',')
+    return [rank, country, val].join(',')
   })
   const csvContent = [headers.join(','), ...csvRows].join('\n')
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })

@@ -156,9 +156,49 @@ function resetView() {
   }
 }
 
+function focusCountry(isoA3) {
+  const leafletMap = getLeafletMap()
+  const geoJsonLayer = geoJsonRef.value?.leafletObject
+  if (!leafletMap || !geoJsonLayer || !isoA3) return
+
+  let targetLayer = null
+  geoJsonLayer.eachLayer((layer) => {
+    if (layer.feature?.properties?.iso_a3 === isoA3) {
+      targetLayer = layer
+    } else if (layer.setStyle) {
+      const hasVal = layer.feature?.properties?.value != null
+      layer.setStyle({
+        weight: 0.8,
+        color: hasVal ? '#0f172a' : '#334155',
+        fillOpacity: hasVal ? 0.82 : 0.45
+      })
+      layer.closeTooltip?.()
+    }
+  })
+
+  if (targetLayer && targetLayer.getBounds) {
+    const bounds = targetLayer.getBounds()
+    if (bounds.isValid()) {
+      leafletMap.flyToBounds(bounds, {
+        padding: [90, 90],
+        maxZoom: 5,
+        duration: 0.65
+      })
+    }
+    targetLayer.setStyle?.({
+      weight: 2.8,
+      color: '#38bdf8',
+      fillOpacity: 0.96
+    })
+    targetLayer.bringToFront?.()
+    targetLayer.openTooltip?.()
+  }
+}
+
 defineExpose({
   getLeafletMap,
   geoJsonRef,
-  resetView
+  resetView,
+  focusCountry
 })
 </script>

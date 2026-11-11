@@ -2,11 +2,12 @@
   <div class="app-container">
     <MapView
       v-if="geojsonData"
+      ref="mapViewRef"
       class="map-background"
       :geojsonData="geojsonData"
       :mapData="mapData"
       :getStyleForFeature="getStyleForFeature"
-      :onEachFeature="bindFeatureInteractions"
+      :onEachFeature="onEachFeature"
     >
       <template #language-trigger>
         <LanguageSwitcher />
@@ -46,9 +47,11 @@
             :table-data="tableData"
             :sort-column="sortColumn"
             :sort-direction="sortDirection"
+            :selected-country-iso="selectedCountryIso"
             v-model:is-table-collapsed="isTableCollapsed"
             @set-sort="setSort"
             @download-csv="handleDownload(tableData)"
+            @select-country="handleSelectCountryFromTable"
           />
         </transition>
 
@@ -84,12 +87,14 @@ import {
 } from './composables/useQoLData'
 import {
   COLOR_PALETTE,
-  bindFeatureInteractions,
+  createFeatureInteractionHandler,
   formatIndicatorName
 } from './utils/helpers'
 
 const showCover = ref(true)
 const selectedIndicator = ref('')
+const selectedCountryIso = ref('')
+const mapViewRef = ref(null)
 
 const { indicatorGroups, geojsonData, initialError } = useInitialMetadata()
 const {
@@ -124,8 +129,26 @@ const { tableData, loading, dataError } = useIndicatorData(
 
 const { mapData, valueBounds, getStyleForFeature } = useMapChloropleth(
   geojsonData,
-  tableData
+  tableData,
+  selectedCountryIso
 )
+
+const onEachFeature = createFeatureInteractionHandler(
+  (isoA3) => {
+    selectedCountryIso.value = isoA3
+  },
+  () => selectedCountryIso.value
+)
+
+function handleSelectCountryFromTable(isoA3) {
+  if (selectedCountryIso.value === isoA3) {
+    selectedCountryIso.value = ''
+    mapViewRef.value?.resetView?.()
+    return
+  }
+  selectedCountryIso.value = isoA3
+  mapViewRef.value?.focusCountry?.(isoA3)
+}
 
 const combinedError = computed(
   () => initialError.value || yearRangeError.value || dataError.value
@@ -133,5 +156,6 @@ const combinedError = computed(
 
 watch(selectedIndicator, () => {
   sortBy.value = 'country_asc'
+  selectedCountryIso.value = ''
 })
 </script>
