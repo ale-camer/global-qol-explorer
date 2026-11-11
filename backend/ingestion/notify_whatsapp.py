@@ -2,9 +2,11 @@
 WhatsApp notification helper for the Global QoL Explorer ingestion pipeline.
 Follows the unified multi-repo alert format (`🌍 *[GLOBAL-QOL]* ...`) and shared
 env var convention (`WHATSAPP_PHONE` + `WHATSAPP_APIKEY`) for TextMeBot & CallMeBot.
+Supports both WhatsApp Group IDs (`120363...@g.us`) and direct phone numbers (`+41...`).
 """
 
 from datetime import datetime, timezone
+import json
 import os
 import logging
 import urllib.parse
@@ -43,12 +45,12 @@ def build_whatsapp_message(
 def send_whatsapp_notification(message: str) -> bool:
     """
     Send `message` via TextMeBot or CallMeBot using the standardized credentials:
-      - WHATSAPP_PHONE (e.g. +54911...)
-      - WHATSAPP_APIKEY (TextMeBot alphanumeric key or CallMeBot numeric key)
+      - WHATSAPP_PHONE: WhatsApp Group JID (`120363...@g.us`) OR phone number (`+4177...`)
+      - WHATSAPP_APIKEY: TextMeBot alphanumeric key or CallMeBot numeric key
     Returns True if sent, False if skipped or failed.
     """
-    phone = os.getenv("WHATSAPP_PHONE", "").strip()
-    if not phone:
+    recipient = os.getenv("WHATSAPP_PHONE", "").strip()
+    if not recipient:
         logger.info("WHATSAPP_PHONE not configured; skipping WhatsApp dispatch.")
         return False
 
@@ -60,17 +62,23 @@ def send_whatsapp_notification(message: str) -> bool:
         logger.warning("WHATSAPP_PHONE is set, but WHATSAPP_APIKEY was not found.")
         return False
 
-    clean_phone = phone.lstrip("+").replace(" ", "").replace("-", "")
     encoded_msg = urllib.parse.quote(message)
 
-    # TextMeBot uses alphanumeric keys (e.g. "aBc123XyZ"); CallMeBot uses purely numeric keys
+    # TextMeBot uses alphanumeric keys (supports both @g.us group IDs and +phone)
     if not api_key.isdigit():
+        if "@g.us" in recipient:
+            formatted_recipient = recipient
+        else:
+            clean_phone = recipient.lstrip("+").replace(" ", "").replace("-", "")
+            formatted_recipient = urllib.parse.quote(f"+{clean_phone}")
         url = (
             f"https://api.textmebot.com/send.php?"
-            f"recipient=+{clean_phone}&apikey={urllib.parse.quote(api_key)}&text={encoded_msg}"
+            f"recipient={formatted_recipient}&apikey={urllib.parse.quote(api_key)}"
+            f"&text={encoded_msg}&json=yes"
         )
         provider_name = "TextMeBot"
     else:
+        clean_phone = recipient.lstrip("+").replace(" ", "").replace("-", "")
         url = (
             f"https://api.callmebot.com/whatsapp.php?"
             f"phone={clean_phone}&text={encoded_msg}&apikey={api_key}"
@@ -78,10 +86,18 @@ def send_whatsapp_notification(message: str) -> bool:
         provider_name = "CallMeBot"
 
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "GlobalQoLExplorer/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=20) as resp:
-            logger.info("WhatsApp notification sent via %s (HTTP %s).", provider_name, resp.status)
-            return 200 <= resp.status < 300
+            body = resp.read().decode("utf-8", errors="ignore").strip()
+            if provider_name == "TextMeBot":
+                try:
+                    ok = json.loads(body).get("status") == "success"
+                except Exception:
+                    ok = "Success" in body or "success" in body
+            else:
+                ok = 200 <= resp.status < 300
+            logger.info("WhatsApp notification via %s: HTTP %s (ok=%s)", provider_name, resp.status, ok)
+            return ok
     except Exception as exc:
         logger.error("Failed to send WhatsApp via %s: %s", provider_name, exc)
         return False
