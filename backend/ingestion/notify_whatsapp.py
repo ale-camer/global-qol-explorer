@@ -1,8 +1,7 @@
 """
 WhatsApp notification helper for the Global QoL Explorer ingestion pipeline.
-Follows the unified multi-repo alert format (`🌍 *[GLOBAL-QOL]* ...`) and shared
-env var convention (`WHATSAPP_PHONE` + `WHATSAPP_APIKEY`) for TextMeBot & CallMeBot.
-Supports both WhatsApp Group IDs (`120363...@g.us`) and direct phone numbers (`+41...`).
+Follows the 2-tier executive + diagnostic alert standard (`🟢/🔴 *[GLOBAL-QOL]* ...`)
+and shared env var convention (`WHATSAPP_PHONE` + `WHATSAPP_APIKEY`) for TextMeBot & CallMeBot.
 """
 
 from datetime import datetime, timezone
@@ -15,6 +14,15 @@ import urllib.request
 logger = logging.getLogger(__name__)
 
 
+def _detect_trigger_label() -> str:
+    ev = os.getenv("GITHUB_EVENT_NAME", "").strip().lower()
+    if ev == "schedule":
+        return "Cron"
+    if ev:
+        return "Manual (GHA)"
+    return "Manual"
+
+
 def build_whatsapp_message(
     success: bool,
     indicators_ok: int,
@@ -24,21 +32,40 @@ def build_whatsapp_message(
     delta_rows: int,
     duration_sec: float,
     error_detail: str = "",
+    year_range: str = "",
+    snapshot_mb: float = 0.0,
 ) -> str:
-    """Format a unified, searchable WhatsApp message (`[GLOBAL-QOL]`) summarizing the run."""
-    corte = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    """Format a 2-tier (Executive Header + Diagnostic Detail) WhatsApp alert."""
+    ts_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    trigger = _detect_trigger_label()
+
     if success:
         sign = "+" if delta_rows >= 0 else ""
+        extra_line = ""
+        if year_range or snapshot_mb > 0:
+            parts = []
+            if year_range:
+                parts.append(f"Rango: `{year_range}`")
+            if snapshot_mb > 0:
+                parts.append(f"Snapshot: `{snapshot_mb:.1f} MB`")
+            extra_line = f"\n> {' · '.join(parts)}"
+
         return (
-            "🌍 *[GLOBAL-QOL]* ✅ OK_INGESTION\n"
-            f"📅 Corte: {corte} | Indicadores: {indicators_ok}/{indicators_total} | Países: {countries_count}\n"
-            f"• Filas totales: {total_rows:,} ({sign}{delta_rows:,} vs baseline)\n"
-            f"• Duración: {duration_sec:.1f}s"
+            "🟢 *[GLOBAL-QOL]* · Ingesta Semanal OK\n"
+            f"_{ts_utc} · {duration_sec:.1f}s · {trigger}_\n\n"
+            "*Detalle de control:*\n"
+            f"> Indicadores: `{indicators_ok}/{indicators_total}` · Países: `{countries_count}/{countries_count}`\n"
+            f"> Filas: `{total_rows:,}` (`{sign}{delta_rows:,}` vs base)"
+            f"{extra_line}"
         )
+
     return (
-        "🌍 *[GLOBAL-QOL]* ❌ ERROR_INGESTION\n"
-        f"📅 Corte: {corte} | Indicadores: {indicators_ok}/{indicators_total} | Duración: {duration_sec:.1f}s\n"
-        f"• Detalle: {error_detail or 'Fallo inesperado durante la ejecución'}"
+        "🔴 *[GLOBAL-QOL]* · Fallo en Ingesta\n"
+        f"_{ts_utc} · {duration_sec:.1f}s · {trigger}_\n\n"
+        "*Diagnóstico:*\n"
+        f"> Indicadores OK: `{indicators_ok}/{indicators_total}`\n"
+        f"> Error: {error_detail or 'Fallo inesperado durante la ejecución'}\n"
+        "> Snapshot previo preservado sin cambios"
     )
 
 
@@ -64,7 +91,6 @@ def send_whatsapp_notification(message: str) -> bool:
 
     encoded_msg = urllib.parse.quote(message)
 
-    # TextMeBot uses alphanumeric keys (supports both @g.us group IDs and +phone)
     if not api_key.isdigit():
         if "@g.us" in recipient:
             formatted_recipient = recipient

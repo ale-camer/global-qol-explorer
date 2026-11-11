@@ -222,6 +222,9 @@ def run_ingestion(sqlite_path: Path = DEFAULT_SQLITE_PATH, notify: bool = True) 
 
         duration = time.perf_counter() - start_ts
         delta = len(all_facts) - baseline_rows
+        min_yr = min(r[1] for r in all_facts) if all_facts else 0
+        max_yr = max(r[1] for r in all_facts) if all_facts else 0
+        size_mb = sqlite_path.stat().st_size / (1024 * 1024) if sqlite_path.exists() else 0.0
         msg = build_whatsapp_message(
             success=True,
             indicators_ok=ok_count,
@@ -230,6 +233,8 @@ def run_ingestion(sqlite_path: Path = DEFAULT_SQLITE_PATH, notify: bool = True) 
             total_rows=len(all_facts),
             delta_rows=delta,
             duration_sec=duration,
+            year_range=f"{min_yr}–{max_yr}",
+            snapshot_mb=size_mb,
         )
         logger.info("Ingestion finished in %.2fs (%d fact rows).", duration, len(all_facts))
         print("\n" + msg + "\n")
