@@ -128,14 +128,14 @@
   </div>
 
   <!-- MODE B: Docked at Bottom-Left Corner over the Ocean ONLY AFTER an Indicator is chosen -->
-  <div v-else class="controls-panel active-panel">
-    <!-- Collapsed Classification Bar (click to reopen Step 1 in bottom-center) -->
-    <div class="control-group">
+  <div v-else :class="['controls-panel active-panel', { 'is-compact-mobile': isPanelCompact }]">
+    <!-- Top compact bar on mobile / toggle -->
+    <div class="controls-panel-topbar">
       <button
         type="button"
-        class="collapsed-selector-bar"
-        title="Click to change classification"
-        @click="openClassificationsStep"
+        class="collapsed-selector-bar active-indicator-bar"
+        title="Click to change indicator"
+        @click="openIndicatorsStep"
       >
         <span
           class="cat-icon"
@@ -144,61 +144,72 @@
           <i :class="getCategoryMeta(selectedCategory).icon"></i>
         </span>
         <div class="collapsed-bar-text">
-          <span class="collapsed-bar-label">Classification</span>
-          <span class="collapsed-bar-value">{{ selectedCategory }}</span>
-        </div>
-        <i class="bi bi-grid-fill ms-auto collapsed-chevron"></i>
-      </button>
-    </div>
-
-    <!-- Collapsed Indicator Bar (click to reopen Step 2 in bottom-center) -->
-    <div class="control-group mt-2">
-      <button
-        type="button"
-        class="collapsed-selector-bar active-indicator-bar"
-        title="Click to change indicator"
-        @click="openIndicatorsStep"
-      >
-        <span class="cat-icon">
-          <i class="bi bi-bar-chart-line-fill"></i>
-        </span>
-        <div class="collapsed-bar-text">
-          <span class="collapsed-bar-label">{{ $t('indicator') }}</span>
+          <span class="collapsed-bar-label">{{ selectedCategory || $t('indicator') }}</span>
           <span class="collapsed-bar-value">{{ formatIndicatorName(selectedIndicator) }}</span>
         </div>
         <i class="bi bi-chevron-down ms-auto collapsed-chevron"></i>
       </button>
+
+      <button
+        type="button"
+        class="panel-compact-toggle-btn"
+        :title="isPanelCompact ? 'Expand controls' : 'Compact controls'"
+        @click="isPanelCompact = !isPanelCompact"
+      >
+        <i :class="isPanelCompact ? 'bi bi-sliders' : 'bi bi-chevron-up'"></i>
+      </button>
     </div>
 
-    <!-- Year Range Slider -->
-    <div v-if="selectedIndicator" class="control-group mt-3 pt-3 border-top-subtle">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <label class="control-label m-0">
-          <i class="bi bi-calendar3 me-1"></i>
-          {{ $t('year_range') }}
-        </label>
-        <span class="year-pill">{{ fromYear }} – {{ toYear }}</span>
+    <div v-show="!isPanelCompact" class="controls-panel-expandable">
+      <!-- Collapsed Classification Bar (click to reopen Step 1 in bottom-center) -->
+      <div class="control-group mt-2">
+        <button
+          type="button"
+          class="collapsed-selector-bar"
+          title="Click to change classification"
+          @click="openClassificationsStep"
+        >
+          <span class="cat-icon">
+            <i class="bi bi-grid-fill"></i>
+          </span>
+          <div class="collapsed-bar-text">
+            <span class="collapsed-bar-label">Classification</span>
+            <span class="collapsed-bar-value">{{ selectedCategory }}</span>
+          </div>
+          <i class="bi bi-arrow-left-right ms-auto collapsed-chevron"></i>
+        </button>
       </div>
-      <div class="range-slider">
-        <div class="slider-track" :style="sliderTrackStyle"></div>
-        <input
-          type="range"
-          :min="sliderMinYear"
-          :max="sliderMaxYear"
-          :value="fromYear"
-          @input="onFromYearInput"
-        />
-        <input
-          type="range"
-          :min="sliderMinYear"
-          :max="sliderMaxYear"
-          :value="toYear"
-          @input="onToYearInput"
-        />
-      </div>
-      <div class="d-flex justify-content-between mt-1 slider-extremes">
-        <span>{{ sliderMinYear }}</span>
-        <span>{{ sliderMaxYear }}</span>
+
+      <!-- Year Range Slider -->
+      <div v-if="selectedIndicator" class="control-group mt-3 pt-2.5 border-top-subtle">
+        <div class="d-flex justify-content-between align-items-center mb-1.5">
+          <label class="control-label m-0">
+            <i class="bi bi-calendar3 me-1"></i>
+            {{ $t('year_range') }}
+          </label>
+          <span class="year-pill">{{ fromYear }} – {{ toYear }}</span>
+        </div>
+        <div class="range-slider">
+          <div class="slider-track" :style="sliderTrackStyle"></div>
+          <input
+            type="range"
+            :min="sliderMinYear"
+            :max="sliderMaxYear"
+            :value="fromYear"
+            @input="onFromYearInput"
+          />
+          <input
+            type="range"
+            :min="sliderMinYear"
+            :max="sliderMaxYear"
+            :value="toYear"
+            @input="onToYearInput"
+          />
+        </div>
+        <div class="d-flex justify-content-between mt-1 slider-extremes">
+          <span>{{ sliderMinYear }}</span>
+          <span>{{ sliderMaxYear }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -224,6 +235,7 @@ const selectedCategory = ref('')
 const isShowcaseOpen = ref(true)
 const showcaseStep = ref('categories') // 'categories' | 'indicators'
 const showcaseSearch = ref('')
+const isPanelCompact = ref(typeof window !== 'undefined' && window.innerWidth <= 768)
 
 const CATEGORY_META = {
   'Demography and Population Structure': {

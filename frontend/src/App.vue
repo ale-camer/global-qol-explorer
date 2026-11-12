@@ -157,5 +157,8 @@ const combinedError = computed(
 watch(selectedIndicator, () => {
   sortBy.value = 'country_asc'
   selectedCountryIso.value = ''
+  if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+    isTableCollapsed.value = true
+  }
 })
 </script>
