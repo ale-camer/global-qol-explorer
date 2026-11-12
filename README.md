@@ -71,7 +71,7 @@ cp .env.example .env.development.local
 npm install
 npm run dev
 ```
-Open `http://localhost:5173/global-qol-explorer-frontend/`.
+Open `http://localhost:5173/`.
 
 ### 3. Refresh Data Snapshot & Audit Against Baseline
 ```bash

@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
-  base: '/global-qol-explorer-frontend/',
+  // Served from the root of Cloud Run (explorer.alejandrocamerlengo.com)
+  base: '/',
   plugins: [vue()]
 })
